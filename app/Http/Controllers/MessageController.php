@@ -1,0 +1,120 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Events\MessageSent;
+use App\Models\Conversation;
+use App\Models\Message;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class MessageController extends Controller
+{
+    public function index(Request $request) {
+        $user = Auth::user();
+        
+        // Debug logging
+        \Log::info('Client MessageController - User accessing messages:', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'user_role' => $user->role,
+            'request_path' => $request->path()
+        ]);
+        
+        $conversations = Conversation::where('client_id', $user->id)
+            ->with(['client','lawyer','latestMessage'])
+            ->leftJoin('messages', function($join) {
+                $join->on('conversations.id', '=', 'messages.conversation_id')
+                     ->whereRaw('messages.id = (SELECT MAX(id) FROM messages WHERE conversation_id = conversations.id)');
+            })
+            ->orderByRaw('COALESCE(messages.created_at, conversations.created_at) DESC')
+            ->select('conversations.*')
+            ->get();
+            
+        \Log::info('Client MessageController - Found conversations:', [
+            'user_id' => $user->id,
+            'conversation_count' => $conversations->count(),
+            'conversation_ids' => $conversations->pluck('id')->toArray()
+        ]);
+
+        $activeConvId = $request->get('conversation');
+        $activeConv = null;
+        $messages   = collect();
+
+        if ($activeConvId) {
+            $activeConv = Conversation::with(['client','lawyer','lawyer.lawyerProfile'])->findOrFail($activeConvId);
+            // mark messages as read
+            Message::where('conversation_id', $activeConvId)
+                ->where('sender_id', '!=', $user->id)
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
+            $messages = Message::where('conversation_id', $activeConvId)
+                ->with('sender')
+                ->orderBy('created_at')
+                ->get();
+        } elseif ($conversations->isNotEmpty()) {
+            return redirect()->route('messages', ['conversation' => $conversations->first()->id]);
+        }
+
+        return view('messages', compact('conversations','activeConv','messages','user'));
+    }
+
+    public function startConversation(Request $request) {
+        $request->validate(['lawyer_id' => 'required|exists:users,id']);
+        $client = Auth::user();
+        $conv = Conversation::firstOrCreate(
+            ['client_id' => $client->id, 'lawyer_id' => $request->lawyer_id]
+        );
+        return redirect()->route('messages', ['conversation' => $conv->id]);
+    }
+
+    public function send(Request $request) {
+        $request->validate([
+            'conversation_id' => 'required|exists:conversations,id',
+            'body'            => 'nullable|string|max:2000',
+            'attachment'      => 'nullable|file|max:10240|mimes:jpeg,png,jpg,gif,webp,pdf,doc,docx,txt',
+        ]);
+
+        $conv = Conversation::findOrFail($request->conversation_id);
+        $user = Auth::user();
+
+        if ($conv->client_id !== $user->id) abort(403);
+        if (!$request->filled('body') && !$request->hasFile('attachment')) {
+            return response()->json(['error' => 'Message or attachment required.'], 422);
+        }
+
+        $data = ['conversation_id' => $conv->id, 'sender_id' => $user->id, 'body' => $request->body ?? ''];
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $path = $file->store('message-attachments', 'public');
+            $data['attachment_path'] = $path;
+            $data['attachment_name'] = $file->getClientOriginalName();
+            $data['attachment_type'] = str_starts_with($file->getMimeType(), 'image/') ? 'image' : 'file';
+        }
+
+        $message = Message::create($data);
+
+        try {
+            broadcast(new MessageSent($message))->toOthers();
+        } catch (\Throwable $e) {
+            \Log::error('Broadcasting failed: ' . $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            $message->load('sender');
+            return response()->json([
+                'id'              => $message->id,
+                'sender_id'       => $message->sender_id,
+                'body'            => $message->body,
+                'time'            => $message->created_at->format('g:i A'),
+                'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                'attachment_name' => $message->attachment_name,
+                'attachment_type' => $message->attachment_type,
+            ]);
+        }
+
+        return redirect()->route('messages', ['conversation' => $conv->id]);
+    }
+}
