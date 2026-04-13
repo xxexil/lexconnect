@@ -38,6 +38,10 @@ class AuthController extends Controller
         $profile = null;
         if ($user->role === 'lawyer') {
             $profile = $user->lawyerProfile;
+            if ($profile) {
+                $profile->update(['availability_status' => 'available']);
+                $profile->refresh();
+            }
         } elseif ($user->role === 'law_firm') {
             $profile = $user->lawFirmProfile;
         }
@@ -103,6 +107,7 @@ class AuthController extends Controller
                 'user_id'   => $user->id,
                 'firm_name' => $request->firm_name,
                 'firm_size' => 'solo',
+                'cut_percentage' => 5,
             ]);
         }
 
@@ -124,6 +129,9 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        if ($request->user()?->role === 'lawyer' && $request->user()->lawyerProfile) {
+            $request->user()->lawyerProfile->update(['availability_status' => 'offline']);
+        }
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'Logged out successfully.']);
     }

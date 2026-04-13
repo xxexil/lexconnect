@@ -10,7 +10,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements \Illuminate\Contracts\Auth\MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -32,7 +32,6 @@ class User extends Authenticatable
     {
         if (!$this->avatar) return null;
         if (str_starts_with($this->avatar, 'http')) return $this->avatar;
-        if (!Storage::disk('public')->exists($this->avatar)) return null;
         return asset('storage/' . $this->avatar);
     }
 

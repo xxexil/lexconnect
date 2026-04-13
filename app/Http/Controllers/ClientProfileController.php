@@ -42,4 +42,16 @@ class ClientProfileController extends Controller
 
         return back()->with('success', 'Profile updated successfully.');
     }
+
+    public function updateAvatar(Request $request)
+    {
+        $request->validate(['avatar' => 'required|image|mimes:jpeg,png,jpg,webp,gif|max:4096']);
+        $user = Auth::user();
+        if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+        return back()->with('success', 'Profile photo updated successfully.');
+    }
 }

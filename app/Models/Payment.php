@@ -8,7 +8,7 @@ class Payment extends Model
 {
     protected $fillable = [
         'client_id','lawyer_id','consultation_id','amount','status','type','firm_cut','lawyer_net','paymongo_session_id',
-        'payment_reference','payment_proof'
+        'paymongo_checkout_url','payment_reference','payment_proof'
     ];
 
     public function client() {

@@ -94,6 +94,9 @@
 @endpush
 
 @section('content')
+@php
+    $profileStatus = $profile->currentStatus();
+@endphp
 <a href="{{ $returnTo }}" class="cb-back"><i class="fas fa-arrow-left"></i> Back</a>
 
 <div class="cb-shell">
@@ -114,8 +117,8 @@
         </div>
 
         <div class="cb-badges">
-            <span class="cb-badge status-{{ $profile->availability_status }}">
-                <i class="fas fa-circle" style="font-size:.45rem;"></i> {{ ucfirst($profile->availability_status) }}
+            <span class="cb-badge status-{{ $profile->currentStatusClass() }}">
+                <i class="fas fa-circle" style="font-size:.45rem;"></i> {{ ucfirst($profileStatus) }}
             </span>
             @if($profile->is_certified)
                 <span class="cb-badge cert"><i class="fas fa-shield-alt"></i> Certified</span>
@@ -231,7 +234,6 @@
                             class="cb-input"
                             type="datetime-local"
                             name="scheduled_at"
-                            min="{{ now()->addHour()->format('Y-m-d\TH:i') }}"
                             value="{{ $selectedAt }}"
                             required
                         >
@@ -287,13 +289,14 @@
                 </div>
 
                 <div class="cb-actions">
-                    <form method="POST" action="{{ route('messages.start') }}" style="flex:1;display:flex;">
-                        @csrf
-                        <input type="hidden" name="lawyer_id" value="{{ $lawyer->id }}">
-                        <button type="submit" class="cb-btn-secondary" style="width:100%;">Ask Via Messages</button>
-                    </form>
+                    <button type="button" class="cb-btn-secondary" style="width:100%;" onclick="document.getElementById('askMsgForm').submit();">Ask Via Messages</button>
                     <button type="submit" class="cb-btn-primary"><i class="fas fa-lock" style="margin-right:8px;"></i>Continue to Secure Payment</button>
                 </div>
+            </form>
+
+            <form method="POST" action="{{ route('messages.start') }}" id="askMsgForm" style="display:none;">
+                @csrf
+                <input type="hidden" name="lawyer_id" value="{{ $lawyer->id }}">
             </form>
         </div>
     </section>
@@ -304,7 +307,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const hourlyRate = {{ (float) $profile->hourly_rate }};
-    const blocked = @json($blockedDateStrings->values());
+    const blocked = @json($blockedSchedule ?? []);
     const booked = @json($bookedSlots);
     const selectedInput = document.getElementById('cbScheduledAt');
     const durationSelect = document.getElementById('cbDuration');
@@ -350,6 +353,23 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function normalizeBlocked() {
+        return blocked.map(function (item) {
+            const range = {
+                date: item.date,
+                isAllDay: !!item.is_all_day,
+                label: item.label,
+            };
+
+            if (!range.isAllDay) {
+                range.start = new Date(item.date + 'T' + item.start_time + ':00');
+                range.end = new Date(item.date + 'T' + item.end_time + ':00');
+            }
+
+            return range;
+        });
+    }
+
     function selectSlot(isoValue) {
         selectedSlot = isoValue;
         selectedInput.value = isoValue;
@@ -383,6 +403,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const bookedRanges = normalizeBooked();
+        const blockedRanges = normalizeBlocked();
 
         for (let day = 1; day <= last.getDate(); day += 1) {
             const date = new Date(current.getFullYear(), current.getMonth(), day);
@@ -395,7 +416,9 @@ document.addEventListener('DOMContentLoaded', function () {
             cell.textContent = day;
 
             const isPast = date < today;
-            const isBlocked = blocked.includes(dateStr);
+            const dayBlocked = blockedRanges.filter(function (range) { return range.date === dateStr; });
+            const isBlocked = dayBlocked.some(function (range) { return range.isAllDay; });
+            const hasPartialBlock = dayBlocked.length > 0 && !isBlocked;
             const isToday = date.getTime() === today.getTime();
             const isSelected = selectedDate === dateStr;
             const dayStart = new Date(date);
@@ -407,6 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (isPast) cell.classList.add('past');
             if (isBlocked) cell.classList.add('blocked');
+            if (hasPartialBlock) cell.classList.add('has-bookings');
             if (isToday) cell.classList.add('today');
             if (isSelected) cell.classList.add('selected');
             if (hasBookings && !isPast && !isBlocked) cell.classList.add('has-bookings');
@@ -427,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function showSlots(dateStr, dateObj) {
         const bookedRanges = normalizeBooked();
+        const blockedRanges = normalizeBlocked().filter(function (range) { return range.date === dateStr; });
         const now = new Date();
         const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17];
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -436,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function () {
         slotsGrid.innerHTML = '';
         slotsPanel.style.display = 'block';
 
-        if (blocked.includes(dateStr)) {
+        if (blockedRanges.some(function (range) { return range.isAllDay; })) {
             slotsGrid.innerHTML = '<div class="cb-slot booked">This lawyer is unavailable on this date.</div>';
             return;
         }
@@ -453,12 +478,13 @@ document.addEventListener('DOMContentLoaded', function () {
             button.textContent = label;
             button.className = 'cb-slot';
 
-            if (slotStart <= now) {
-                button.classList.add('past');
-                button.disabled = true;
-            } else if (bookedRanges.some(function (range) { return slotStart < range.end && slotEnd > range.start; })) {
+            if (bookedRanges.some(function (range) { return slotStart < range.end && slotEnd > range.start; })) {
                 button.classList.add('booked');
                 button.disabled = true;
+            } else if (blockedRanges.some(function (range) { return !range.isAllDay && slotStart < range.end && slotEnd > range.start; })) {
+                button.classList.add('booked');
+                button.disabled = true;
+                button.title = 'Blocked by lawyer availability';
             } else {
                 button.classList.add('available');
                 if (selectedSlot === isoValue) {

@@ -12,6 +12,9 @@
 @if(session('success'))
     <div class="lp-alert-success"><i class="fas fa-check-circle"></i> {{ session('success') }}</div>
 @endif
+@if(session('error'))
+    <div class="lp-alert-error"><i class="fas fa-exclamation-circle"></i> {{ session('error') }}</div>
+@endif
 
 {{-- TABS --}}
 <div class="lp-tabs">
@@ -97,7 +100,8 @@
     @forelse($upcoming as $c)
     @php
         $sched   = \Carbon\Carbon::parse($c->scheduled_at);
-        $canJoin = now()->gte($sched->copy()->subMinutes(5));
+        $joinOpensAt = $c->videoJoinOpensAt();
+        $canJoin = $c->canJoinVideoCall();
     @endphp
     <div class="cons-card cons-upcoming">
         <div class="cons-header">
@@ -147,8 +151,11 @@
                         <i class="fas fa-video"></i> Join Call
                     </a>
                     @else
-                    <span class="cons-btn cons-btn-waiting" title="Available at {{ $sched->format('g:i A') }}">
-                        <i class="fas fa-clock"></i> Starts {{ $sched->format('g:i A') }}
+                    <span class="cons-btn cons-btn-waiting js-video-join-waiting"
+                          title="Available at {{ $joinOpensAt->format('g:i A') }}"
+                          data-join-opens-at="{{ $joinOpensAt->timestamp * 1000 }}"
+                          data-join-url="{{ route('consultations.video', $c) }}">
+                        <i class="fas fa-clock"></i> Available {{ $joinOpensAt->format('g:i A') }}
                     </span>
                     @endif
                 @endif
@@ -201,12 +208,6 @@
                     @endif
                     <span class="cons-chip"><i class="fas fa-hourglass-half"></i> {{ $c->duration_label }}</span>
                     <span class="cons-chip cons-chip-price"><i class="fas fa-peso-sign"></i> {{ number_format($c->price, 2) }}</span>
-                </div>
-            </div>
-            <div class="cons-actions" style="justify-content:flex-start;">
-                <div class="cons-earned">
-                    <div style="font-size:.72rem;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">Earned</div>
-                    <div style="font-size:1.2rem;font-weight:800;color:#059669;">₱{{ number_format($c->price, 2) }}</div>
                 </div>
             </div>
         </div>
@@ -311,6 +312,25 @@ function showTab(name, btn) {
     document.getElementById('tab-' + name).style.display = 'block';
     btn.classList.add('active');
 }
+
+function refreshJoinButtons() {
+    var now = Date.now();
+    document.querySelectorAll('.js-video-join-waiting').forEach(function(button) {
+        var opensAt = parseInt(button.dataset.joinOpensAt || '0', 10);
+        var joinUrl = button.dataset.joinUrl;
+
+        if (!opensAt || !joinUrl || now < opensAt) return;
+
+        var link = document.createElement('a');
+        link.href = joinUrl;
+        link.className = 'cons-btn cons-btn-join';
+        link.innerHTML = '<i class="fas fa-video"></i> Join Call';
+        button.replaceWith(link);
+    });
+}
+
+refreshJoinButtons();
+setInterval(refreshJoinButtons, 1000);
 </script>
 @endpush
 

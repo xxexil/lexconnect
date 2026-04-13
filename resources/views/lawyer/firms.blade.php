@@ -87,6 +87,9 @@
                     {{ $currentFirm->firm_size_label }}
                     @if($currentFirm->city) &bull; <i class="fas fa-map-marker-alt"></i> {{ $currentFirm->city }}@endif
                 </div>
+                <div style="margin-top:8px;font-size:.82rem;color:#1e2d4d;font-weight:600;">
+                    Firm cut: {{ $currentFirm->formatted_cut_percentage }}% of the balance payment
+                </div>
                 @if($currentFirm->specialties)
                 <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;">
                     @foreach(array_slice($currentFirm->specialties, 0, 5) as $sp)
@@ -152,6 +155,7 @@
             <div class="firm-meta" style="margin-top:4px;">
                 <span><i class="fas fa-users"></i> {{ $f->lawyers_count }} lawyer{{ $f->lawyers_count !== 1 ? 's' : '' }}</span>
                 <span><i class="fas fa-building"></i> {{ $f->firm_size_label }}</span>
+                <span><i class="fas fa-percent"></i> {{ $f->formatted_cut_percentage }}% firm cut</span>
                 @if($f->city)<span><i class="fas fa-map-marker-alt"></i> {{ $f->city }}</span>@endif
                 @if($f->founded_year)<span><i class="fas fa-history"></i> Est. {{ $f->founded_year }}</span>@endif
             </div>
@@ -166,7 +170,7 @@
             <div style="margin-top:8px;font-size:.84rem;color:#6c757d;line-height:1.5;">{{ \Illuminate\Support\Str::limit($f->description, 160) }}</div>
             @endif
         </div>
-        <button class="btn-apply" onclick="openApplyModal({{ $f->id }}, '{{ addslashes($f->firm_name) }}')">
+        <button class="btn-apply" onclick="openApplyModal({{ $f->id }}, '{{ addslashes($f->firm_name) }}', '{{ $f->formatted_cut_percentage }}')">
             <i class="fas fa-paper-plane"></i> Apply
         </button>
     </div>
@@ -191,6 +195,9 @@
                 <div style="font-size:.8rem;color:#adb5bd;">Introduce yourself to the firm</div>
             </div>
         </div>
+        <div id="modalFirmCutNotice" style="margin-top:14px;padding:12px 14px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;font-size:.84rem;color:#475569;line-height:1.6;">
+            This firm currently takes a share from completed consultations.
+        </div>
         <form method="POST" action="{{ route('lawyer.firms.apply') }}" style="margin-top:20px;">
             @csrf
             <input type="hidden" name="law_firm_id" id="modalFirmId">
@@ -214,9 +221,10 @@
 @endsection
 @push('scripts')
 <script>
-function openApplyModal(firmId, firmName) {
+function openApplyModal(firmId, firmName, cutPercentage) {
     document.getElementById('modalFirmId').value = firmId;
     document.getElementById('modalFirmName').textContent = firmName;
+    document.getElementById('modalFirmCutNotice').textContent = 'This firm currently takes ' + cutPercentage + '% of the balance payment for completed consultations. Please review that arrangement before applying.';
     var modal = document.getElementById('applyModal');
     modal.style.display = 'flex';
 }

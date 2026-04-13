@@ -228,7 +228,7 @@
                     <i class="fas fa-chevron-down fl-chevron"></i>
                 </div>
                 <div class="filter-section-body" style="display:none;">
-                    @foreach(['' => 'Any', 'available' => 'Available Now', 'busy' => 'Busy'] as $val => $label)
+                    @foreach(['' => 'Any', 'available' => 'Active Now', 'busy' => 'Busy'] as $val => $label)
                     <label class="fl-radio-opt">
                         <input type="radio" name="availability" value="{{ $val }}" {{ request('availability')==$val ? 'checked' : '' }}> {{ $label }}
                     </label>
@@ -265,6 +265,9 @@
         {{-- Lawyer cards grid --}}
         <div class="fl-cards-grid" id="lawyersGrid">
             @forelse($lawyers as $lp)
+            @php
+                $lawyerStatus = $lp->currentStatus();
+            @endphp
             <div class="lc-card">
                 {{-- Photo header --}}
                 <div class="lc-image-wrap">
@@ -276,9 +279,9 @@
                         </div>
                     @endif
                     {{-- Availability badge --}}
-                    <span class="lc-avail-badge {{ $lp->availability_status }}">
+                    <span class="lc-avail-badge {{ $lp->currentStatusClass() }}">
                         <span class="lc-avail-dot"></span>
-                        {{ ucfirst($lp->availability_status) }}
+                        {{ ucfirst($lawyerStatus) }}
                     </span>
                     {{-- Certified badge --}}
                     @if($lp->is_certified)
@@ -328,13 +331,13 @@
                             <i class="fas fa-calendar-check"></i>
                             Next: {{ \Carbon\Carbon::parse($lp->nextConsultation->scheduled_at)->format('M j, g:i A') }}
                         </div>
-                    @elseif($lp->availability_status === 'available')
+                    @elseif($lawyerStatus === 'active')
                         <div class="lc-next">
-                            <i class="fas fa-calendar-check"></i> Available Today
+                            <i class="fas fa-calendar-check"></i> Active Today
                         </div>
                     @else
                         <div class="lc-next" style="color:#dc3545;">
-                            <i class="fas fa-clock"></i> Currently {{ ucfirst($lp->availability_status) }}
+                            <i class="fas fa-clock"></i> Currently {{ ucfirst($lawyerStatus) }}
                         </div>
                     @endif
 
@@ -362,7 +365,7 @@
 
                     {{-- Actions --}}
                     <div class="lc-actions">
-                        @if($lp->availability_status === 'available')
+                        @if($lawyerStatus === 'active')
                         <a class="lc-book-btn"
                             href="{{ route('consultations.create', ['lawyer' => $lp->user_id, 'return_to' => url()->full()]) }}">
                             <i class="fas fa-video"></i> Book
@@ -766,7 +769,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const today = new Date(); today.setHours(0,0,0,0);
         const pad   = n => String(n).padStart(2, '0');
 
-        const blocked = _sched.blocked || [];
+        const blocked = (_sched.blocked || []).map(function(blockedDate) {
+            const range = {
+                date: blockedDate.date,
+                isAllDay: !!blockedDate.is_all_day,
+                label: blockedDate.label,
+                reason: blockedDate.reason || '',
+            };
+
+            if (!range.isAllDay) {
+                range.s = new Date(blockedDate.date + 'T' + blockedDate.start_time + ':00');
+                range.e = new Date(blockedDate.date + 'T' + blockedDate.end_time + ':00');
+            }
+
+            return range;
+        });
         const booked  = (_sched.booked || []).map(b => ({ s: new Date(b.start), e: new Date(b.end) }));
 
         // Leading empty cells
@@ -781,7 +798,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const dateObj = new Date(_scYear, _scMonth, d); dateObj.setHours(0,0,0,0);
             const dateStr = _scYear + '-' + pad(_scMonth+1) + '-' + pad(d);
             const isPast    = dateObj < today;
-            const isBlocked = blocked.includes(dateStr);
+            const dayBlocked = blocked.filter(b => b.date === dateStr);
+            const isBlocked = dayBlocked.some(b => b.isAllDay);
+            const hasPartialBlock = dayBlocked.length > 0 && !isBlocked;
             const isToday   = dateObj.getTime() === today.getTime();
             const isSelected = _scSelectedDate === dateStr;
 
@@ -793,6 +812,7 @@ document.addEventListener('DOMContentLoaded', function() {
             cell.className = 'sc-cal-cell';
             if (isPast) cell.classList.add('past');
             if (isBlocked) cell.classList.add('blocked');
+            if (hasPartialBlock) cell.classList.add('has-bookings');
             if (isToday) cell.classList.add('today');
             if (isSelected) cell.classList.add('selected');
             if (hasBookings && !isPast && !isBlocked) cell.classList.add('has-bookings');
@@ -800,6 +820,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (isBlocked) {
                 cell.title = 'Lawyer unavailable';
+            } else if (hasPartialBlock) {
+                cell.title = dayBlocked.map(function(item) {
+                    return item.label + (item.reason ? ' - ' + item.reason : '');
+                }).join('\n');
             } else if (!isPast) {
                 cell.onclick = (function(ds, dObj) {
                     return function() {
@@ -823,8 +847,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         title.textContent = DAYS[dateObj.getDay()] + ', ' + MONTHS[dateObj.getMonth()] + ' ' + dateObj.getDate();
 
-        const blocked = (_sched.blocked || []);
-        if (blocked.includes(dateStr)) {
+        const blocked = (_sched.blocked || []).map(function(blockedDate) {
+            const range = {
+                date: blockedDate.date,
+                isAllDay: !!blockedDate.is_all_day,
+            };
+
+            if (!range.isAllDay) {
+                range.s = new Date(blockedDate.date + 'T' + blockedDate.start_time + ':00');
+                range.e = new Date(blockedDate.date + 'T' + blockedDate.end_time + ':00');
+            }
+
+            return range;
+        }).filter(b => b.date === dateStr);
+
+        if (blocked.some(b => b.isAllDay)) {
             grid.innerHTML = '<div style="width:100%;text-align:center;padding:18px;color:#dc3545;font-size:.88rem;"><i class="fas fa-ban"></i> Lawyer unavailable on this date</div>';
             panel.style.display = 'block';
             return;
@@ -843,10 +880,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const label = h12 + ':00 ' + ap;
             const iso = _toISO(slotS);
 
-            if (slotS <= now) {
-                html += `<div class="sc-slot past">${label}</div>`;
-            } else if (booked.some(b => slotS < b.e && slotE > b.s)) {
-                html += `<div class="sc-slot booked" title="Already booked">${label}</div>`;
+            if (booked.some(b => slotS < b.e && slotE > b.s) || blocked.some(b => !b.isAllDay && slotS < b.e && slotE > b.s)) {
+                html += `<div class="sc-slot booked" title="Unavailable">${label}</div>`;
             } else {
                 html += `<div class="sc-slot available" onclick="_scBookSlot('${iso}')">${label}</div>`;
             }

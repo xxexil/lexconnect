@@ -28,7 +28,9 @@
             <div class="lp-prof-avatar-wrap" style="position:relative;cursor:pointer;"
                  onclick="document.getElementById('avatarInput').click()" title="Click to change photo">
                 @if($user->avatar_url)
-                    <img src="{{ $user->avatar_url }}" class="lp-prof-avatar" alt="{{ $user->name }}" id="avatarPreview">
+                    <img src="{{ $user->avatar_url }}" class="lp-prof-avatar" alt="{{ $user->name }}" id="avatarPreview"
+                         onerror="this.style.display='none';document.getElementById('avatarInitial').style.display='flex';">
+                    <div class="lp-prof-avatar-initial" id="avatarInitial" style="display:none;">{{ strtoupper(substr($user->name,0,1)) }}</div>
                 @else
                     <div class="lp-prof-avatar-initial" id="avatarInitial">{{ strtoupper(substr($user->name,0,1)) }}</div>
                     <img src="" class="lp-prof-avatar" id="avatarPreview" style="display:none;">
@@ -63,67 +65,11 @@
             </div>
         </div>
 
-        <div class="lp-avail-status-box">
-            <div class="lp-avail-label-sm">Availability</div>
-            <form method="POST" action="{{ route('lawyer.profile.availability') }}">
-                @csrf
-                <div class="lp-avail-btns">
-                    @foreach(['available'=>'🟢 Available','busy'=>'🟡 Busy','offline'=>'⚫ Offline'] as $v=>$l)
-                    <label class="lp-avail-opt {{ $profile->availability_status===$v ? 'active-'.$v : '' }}">
-                        <input type="radio" name="status" value="{{ $v }}" {{ $profile->availability_status===$v ? 'checked' : '' }} onchange="this.form.submit()" style="display:none;">
-                        {{ $l }}
-                    </label>
-                    @endforeach
-                </div>
-            </form>
-        </div>
-
         <div class="lp-cert-badge-box {{ $profile->is_certified ? 'certified' : '' }}">
             <i class="fas fa-{{ $profile->is_certified ? 'shield-alt' : 'shield' }}"></i>
             {{ $profile->is_certified ? 'Bar Certified' : 'Not Certified' }}
         </div>
 
-        @php
-            $merchantTone = $paymongoMerchant->status_tone ?? 'neutral';
-            $merchantStatus = $paymongoMerchant->status_label ?? 'Not Started';
-            $merchantToneStyles = [
-                'success' => ['bg' => '#ecfdf5', 'border' => '#6ee7b7', 'text' => '#065f46'],
-                'info' => ['bg' => '#eff6ff', 'border' => '#93c5fd', 'text' => '#1d4ed8'],
-                'warning' => ['bg' => '#fffbeb', 'border' => '#fcd34d', 'text' => '#b45309'],
-                'danger' => ['bg' => '#fef2f2', 'border' => '#fca5a5', 'text' => '#b91c1c'],
-                'neutral' => ['bg' => '#f8fafc', 'border' => '#dbe3ef', 'text' => '#475569'],
-            ];
-            $merchantPalette = $merchantToneStyles[$merchantTone] ?? $merchantToneStyles['neutral'];
-        @endphp
-
-        <div style="margin-top:16px;padding:16px;border-radius:14px;border:1px solid {{ $merchantPalette['border'] }};background:{{ $merchantPalette['bg'] }};">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
-                <div style="font-weight:800;font-size:.92rem;color:#1e2d4d;">
-                    <i class="fas fa-store"></i> PayMongo Child Merchant
-                </div>
-                <span style="padding:5px 10px;border-radius:999px;background:#fff;color:{{ $merchantPalette['text'] }};font-size:.75rem;font-weight:700;border:1px solid {{ $merchantPalette['border'] }};">
-                    {{ $merchantStatus }}
-                </span>
-            </div>
-            <div style="font-size:.82rem;line-height:1.6;color:#52607a;">
-                {{ $childMerchantSupportMessage }}
-            </div>
-            @if($paymongoMerchant)
-                <div style="margin-top:10px;font-size:.78rem;color:#64748b;">
-                    Mode: {{ ucfirst($paymongoMerchant->onboarding_mode) }}
-                    @if($paymongoMerchant->last_synced_at)
-                        • Synced {{ $paymongoMerchant->last_synced_at->diffForHumans() }}
-                    @endif
-                </div>
-            @endif
-            <form method="POST" action="{{ route('lawyer.paymongo-child-merchant.start') }}" style="margin-top:12px;">
-                @csrf
-                <button type="submit" class="lp-save-btn" style="width:100%;justify-content:center;padding:10px 14px;font-size:.85rem;">
-                    <i class="fas fa-link"></i>
-                    {{ $paymongoMerchant ? 'Refresh Child Merchant Setup' : 'Prepare Child Merchant Setup' }}
-                </button>
-            </form>
-        </div>
     </div>
 
     {{-- RIGHT: Edit form --}}
@@ -200,6 +146,39 @@
                 </div>
             </div>
 
+            {{-- Submitted IDs --}}
+            <div class="lp-form-section">Submitted IDs</div>
+            <div class="lp-form-row">
+                <div class="lp-form-group">
+                    <label class="lp-form-label">Government ID</label>
+                    @if($profile->government_id_doc)
+                        <a href="{{ asset('storage/' . $profile->government_id_doc) }}" target="_blank" rel="noopener"
+                           style="display:inline-flex;align-items:center;gap:7px;margin-bottom:8px;color:#2563eb;font-size:.86rem;font-weight:700;text-decoration:none;">
+                            <i class="fas fa-id-card"></i> View current Government ID
+                        </a>
+                    @else
+                        <div style="margin-bottom:8px;color:#b45309;font-size:.86rem;"><i class="fas fa-file-circle-minus"></i> No Government ID submitted</div>
+                    @endif
+                    <input type="file" name="government_id" accept="image/*,.pdf" class="lp-form-input">
+                    <div style="margin-top:5px;color:#8a94a6;font-size:.78rem;">Upload a JPG, PNG, or PDF to replace the current file.</div>
+                    @error('government_id')<div class="lp-form-err">{{ $message }}</div>@enderror
+                </div>
+                <div class="lp-form-group">
+                    <label class="lp-form-label">IBP ID</label>
+                    @if($profile->ibp_id_doc)
+                        <a href="{{ asset('storage/' . $profile->ibp_id_doc) }}" target="_blank" rel="noopener"
+                           style="display:inline-flex;align-items:center;gap:7px;margin-bottom:8px;color:#2563eb;font-size:.86rem;font-weight:700;text-decoration:none;">
+                            <i class="fas fa-file-certificate"></i> View current IBP ID
+                        </a>
+                    @else
+                        <div style="margin-bottom:8px;color:#b45309;font-size:.86rem;"><i class="fas fa-file-circle-minus"></i> No IBP ID submitted</div>
+                    @endif
+                    <input type="file" name="ibp_id" accept="image/*,.pdf" class="lp-form-input">
+                    <div style="margin-top:5px;color:#8a94a6;font-size:.78rem;">Upload a JPG, PNG, or PDF to replace the current file.</div>
+                    @error('ibp_id')<div class="lp-form-err">{{ $message }}</div>@enderror
+                </div>
+            </div>
+
             {{-- Change Password --}}
             <div class="lp-form-section">Change Password <span style="font-weight:400;font-size:.8rem;color:#999;">(leave blank to keep current)</span></div>
             <div class="lp-form-row">
@@ -211,22 +190,6 @@
                 <div class="lp-form-group">
                     <label class="lp-form-label">Confirm New Password</label>
                     <input type="password" name="password_confirmation" class="lp-form-input" placeholder="Repeat new password" autocomplete="new-password">
-                </div>
-            </div>
-
-            {{-- Payment Information --}}
-            <div class="lp-form-section">Payment Information</div>
-            <div class="lp-form-row">
-                <div class="lp-form-group">
-                    <label class="lp-form-label">GCash Number <span style="color:#888;font-size:.8rem;">(for client payments)</span></label>
-                    <input type="text" name="gcash_number" value="{{ old('gcash_number', $profile->gcash_number) }}" class="lp-form-input" placeholder="09XXXXXXXXXX">
-                </div>
-                <div class="lp-form-group">
-                    <label class="lp-form-label">GCash QR Code <span style="color:#888;font-size:.8rem;">(optional)</span></label>
-                    @if($profile->gcash_qr)
-                        <img src="{{ asset('storage/'.$profile->gcash_qr) }}" alt="GCash QR" style="max-width:120px;display:block;margin-bottom:6px;">
-                    @endif
-                    <input type="file" name="gcash_qr" accept="image/*" class="lp-form-input">
                 </div>
             </div>
 

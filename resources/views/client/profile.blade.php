@@ -93,28 +93,32 @@
         $memberSince = $user->created_at->format('M Y');
     @endphp
 
-    <form action="{{ route('client.profile.update') }}" method="POST" enctype="multipart/form-data">
-        @csrf
-        @method('PUT')
-
         {{-- Avatar + Stats --}}
         <div class="cp-card">
             <div class="cp-section-title"><i class="fas fa-user-circle" style="color:#2563eb;margin-right:8px;"></i>Profile Photo</div>
             <div class="cp-avatar-area">
-                <div class="cp-avatar-circle">
-                    @if($user->avatar_url)
-                        <img src="{{ $user->avatar_url }}" alt="Avatar" id="avatarPreview">
-                    @else
-                        <span id="avatarInitials">{{ $initials }}</span>
-                        <img src="" alt="" id="avatarPreview" style="display:none;">
-                    @endif
-                </div>
+                <form method="POST" action="{{ route('client.profile.avatar') }}" enctype="multipart/form-data" id="avatarForm">
+                    @csrf
+                    <div class="cp-avatar-circle" onclick="document.getElementById('avatarFileInput').click()"
+                         style="cursor:pointer;position:relative;" title="Click to change photo">
+                        @if($user->avatar_url)
+                            <img src="{{ $user->avatar_url }}" alt="Avatar" id="avatarPreview"
+                                 onerror="this.style.display='none';document.getElementById('avatarInitials').style.display='flex';">
+                            <span id="avatarInitials" style="display:none;align-items:center;justify-content:center;width:100%;height:100%;">{{ $initials }}</span>
+                        @else
+                            <span id="avatarInitials" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">{{ $initials }}</span>
+                            <img src="" alt="" id="avatarPreview" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:50%;">
+                        @endif
+                        <div style="position:absolute;inset:0;background:rgba(0,0,0,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;" id="avatarHover">
+                            <i class="fas fa-camera" style="color:#fff;font-size:1.1rem;"></i>
+                        </div>
+                    </div>
+                    <input type="file" id="avatarFileInput" name="avatar" accept="image/*" style="display:none;" onchange="submitAvatar(this)">
+                </form>
                 <div class="cp-avatar-btns">
-                    <label class="cp-avatar-upload-btn">
+                    <button type="button" class="cp-avatar-upload-btn" onclick="document.getElementById('avatarFileInput').click()">
                         <i class="fas fa-camera"></i> Upload Photo
-                        <input type="file" name="avatar" accept="image/*" style="display:none;"
-                            onchange="previewAvatar(this)">
-                    </label>
+                    </button>
                     <span class="cp-avatar-hint">JPG, PNG or WebP · Max 4MB</span>
                 </div>
             </div>
@@ -135,6 +139,10 @@
                 </div>
             </div>
         </div>
+
+    <form action="{{ route('client.profile.update') }}" method="POST">
+        @csrf
+        @method('PUT')
 
         {{-- Personal Info --}}
         <div class="cp-card">
@@ -176,17 +184,24 @@
 </div>
 
 <script>
-function previewAvatar(input) {
+var avatarCircle = document.querySelector('.cp-avatar-circle');
+var avatarHover = document.getElementById('avatarHover');
+if (avatarCircle && avatarHover) {
+    avatarCircle.addEventListener('mouseenter', function(){ avatarHover.style.opacity='1'; });
+    avatarCircle.addEventListener('mouseleave', function(){ avatarHover.style.opacity='0'; });
+}
+
+function submitAvatar(input) {
     if (!input.files || !input.files[0]) return;
     var reader = new FileReader();
     reader.onload = function(e) {
         var preview = document.getElementById('avatarPreview');
         var initials = document.getElementById('avatarInitials');
-        preview.src = e.target.result;
-        preview.style.display = 'block';
+        if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
         if (initials) initials.style.display = 'none';
     };
     reader.readAsDataURL(input.files[0]);
+    document.getElementById('avatarForm').submit();
 }
 </script>
 

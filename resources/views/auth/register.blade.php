@@ -32,7 +32,7 @@
         #lawyerFields { display: none; }
         #firmFields   { display: none; }
         #clientFirmTerms { display: block; } /* Initially visible for clients */
-        .doc-upload-label { display:flex; align-items:center; justify-content:center; gap:10px; padding:13px 16px; border:2px dashed #1e2d4d; border-radius:8px; cursor:pointer; font-size:.9rem; font-weight:600; color:#1e2d4d; transition:all .2s; background:#f8f9ff; }
+        .doc-upload-label { display:flex; align-items:center; justify-content:center; gap:10px; padding:13px 16px; border:2px dashed #1e2d4d; border-radius:8px; cursor:pointer; font-size:.9rem; font-weight:600; color:#1e2d4d; transition:all .2s; background:#f8f9ff; height:52px; box-sizing:border-box; white-space:nowrap; overflow:hidden; }
         .doc-upload-label:hover { background:#e8ecf5; border-color:#b5860d; color:#b5860d; }
         .doc-upload-label.selected { border-color:#28a745; color:#28a745; background:#f0fff4; border-style:solid; }
         .doc-upload-label input[type=file] { display:none; }
@@ -56,7 +56,7 @@
         .legal-modal-body li { margin-bottom: 8px; }
         .legal-modal-footer { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: right; }
         .btn-close-modal { padding: 10px 24px; background: #1e2d4d; color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
-        .doc-hint { font-size:.78rem; color:#888; text-align:center; margin-top:4px; }
+        .doc-hint { font-size:.75rem; color:#888; text-align:center; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; display:block; }
         /* Firm preview card */
         .firm-preview-card { border: 1.5px solid #d0dce8; border-radius: 10px; padding: 16px 18px; background: #f5f8ff; }
         .firm-preview-name { font-size: 1rem; font-weight: 700; color: #1e2d4d; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -157,6 +157,43 @@
                     <label>Website</label>
                     <input type="url" name="website" value="{{ old('website') }}" placeholder="https://yourfirm.com">
                 </div>
+                <div class="section-divider" style="text-align:center;">Required Registration Documents</div>
+                <div class="form-row" style="margin-bottom:6px;">
+                    <div class="form-group" style="margin-bottom:4px;min-width:0;">
+                        <label class="doc-upload-label" id="dtiSecLabel">
+                            <i class="fas fa-building-shield"></i> DTI/SEC Registration
+                            <input type="file" name="dti_sec_registration" accept="image/*,.pdf" onchange="markUploaded(this,'dtiSecLabel','dtiSecName')">
+                        </label>
+                        <div class="doc-hint" id="dtiSecName"></div>
+                        @error('dti_sec_registration')<div class="invalid-feedback" style="display:block;">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="form-group" style="margin-bottom:4px;min-width:0;">
+                        <label class="doc-upload-label" id="businessPermitLabel">
+                            <i class="fas fa-file-signature"></i> Business Permit
+                            <input type="file" name="business_permit" accept="image/*,.pdf" onchange="markUploaded(this,'businessPermitLabel','businessPermitName')">
+                        </label>
+                        <div class="doc-hint" id="businessPermitName"></div>
+                        @error('business_permit')<div class="invalid-feedback" style="display:block;">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:6px;">
+                    <div class="form-group" style="margin-bottom:4px;min-width:0;">
+                        <label class="doc-upload-label" id="validIdLabel">
+                            <i class="fas fa-id-card"></i> Valid ID
+                            <input type="file" name="valid_id" accept="image/*,.pdf" onchange="markUploaded(this,'validIdLabel','validIdName')">
+                        </label>
+                        <div class="doc-hint" id="validIdName"></div>
+                        @error('valid_id')<div class="invalid-feedback" style="display:block;">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="form-group" style="margin-bottom:4px;min-width:0;">
+                        <label class="doc-upload-label" id="ibpFirmLabel">
+                            <i class="fas fa-file-certificate"></i> IBP ID
+                            <input type="file" name="firm_ibp_id" accept="image/*,.pdf" onchange="markUploaded(this,'ibpFirmLabel','ibpFirmName')">
+                        </label>
+                        <div class="doc-hint" id="ibpFirmName"></div>
+                        @error('firm_ibp_id')<div class="invalid-feedback" style="display:block;">{{ $message }}</div>@enderror
+                    </div>
+                </div>
             </div>
 
             {{-- Lawyer-only fields --}}
@@ -239,7 +276,7 @@
                 {{-- Document Upload --}}
                 <div class="section-divider" style="text-align:center;">Please Upload Documents for Verification</div>
                 <div class="form-row" style="margin-bottom:6px;">
-                    <div class="form-group" style="margin-bottom:4px;">
+                    <div class="form-group" style="margin-bottom:4px;min-width:0;">
                         <label class="doc-upload-label" id="govIdLabel">
                             <i class="fas fa-id-card"></i> Government ID
                             <input type="file" name="government_id" accept="image/*,.pdf" onchange="markUploaded(this,'govIdLabel','govIdName')">
@@ -247,7 +284,7 @@
                         <div class="doc-hint" id="govIdName"></div>
                         @error('government_id')<div class="invalid-feedback" style="display:block;">{{ $message }}</div>@enderror
                     </div>
-                    <div class="form-group" style="margin-bottom:4px;">
+                    <div class="form-group" style="margin-bottom:4px;min-width:0;">
                         <label class="doc-upload-label" id="ibpIdLabel">
                             <i class="fas fa-file-certificate"></i> IBP ID
                             <input type="file" name="ibp_id" accept="image/*,.pdf" onchange="markUploaded(this,'ibpIdLabel','ibpIdName')">
@@ -378,6 +415,14 @@
         else if (prevRole === 'law_firm') selectRole('law_firm');
         else selectRole('client'); // Ensure defaults are set for client too
 
+        function setSectionInputsEnabled(sectionId, enabled) {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+            section.querySelectorAll('input, select, textarea, button').forEach(el => {
+                el.disabled = !enabled;
+            });
+        }
+
         function selectRole(role) {
             document.getElementById('roleInput').value = role;
             const isLawyer  = role === 'lawyer';
@@ -388,6 +433,8 @@
             document.getElementById('lawyerFields').style.display = isLawyer ? 'block' : 'none';
             document.getElementById('firmFields').style.display   = isFirm   ? 'block' : 'none';
             document.getElementById('clientFirmTerms').style.display = isLawyer ? 'none' : 'block';
+            setSectionInputsEnabled('lawyerFields', isLawyer);
+            setSectionInputsEnabled('firmFields', isFirm);
 
             // Disable/Enable terms inputs based on role to avoid validation conflicts
             document.getElementById('agreedTerms').disabled = !isLawyer;
@@ -453,8 +500,10 @@
                         ${firm.website  ? `<span class="firm-meta-item"><i class="fas fa-globe"></i> <a href="${esc(firm.website)}" target="_blank" rel="noopener noreferrer" style="color:#b5860d;">${esc(firm.website)}</a></span>` : ''}
                         ${firm.founded_year ? `<span class="firm-meta-item"><i class="fas fa-calendar-alt"></i> Est. ${esc(String(firm.founded_year))}</span>` : ''}
                         ${firm.firm_size ? `<span class="firm-meta-item"><i class="fas fa-users"></i> ${esc(firm.firm_size.charAt(0).toUpperCase()+firm.firm_size.slice(1))} firm</span>` : ''}
+                        ${firm.cut_percentage !== null && firm.cut_percentage !== undefined ? `<span class="firm-meta-item"><i class="fas fa-percent"></i> ${esc(String(firm.cut_percentage))}% firm cut</span>` : ''}
                         ${firm.rating   ? `<span class="firm-meta-item"><i class="fas fa-star" style="color:#f59e0b;"></i> ${firm.rating}/5 (${firm.reviews_count} review${firm.reviews_count===1?'':'s'})</span>` : ''}
                     </div>
+                    ${firm.cut_percentage !== null && firm.cut_percentage !== undefined ? `<div class="firm-preview-desc" style="margin-bottom:0;"><strong>Compensation:</strong> This firm currently takes ${esc(String(firm.cut_percentage))}% of the completed consultation balance.</div>` : ''}
                     ${specs.length ? `<div class="firm-preview-specs">${specs.map(s=>`<span class="firm-spec-tag">${esc(s)}</span>`).join('')}</div>` : ''}
                 </div>`;
         }

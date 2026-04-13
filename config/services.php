@@ -31,12 +31,12 @@ return [
     'paymongo' => [
         'public_key'               => env('PAYMONGO_PUBLIC_KEY'),
         'secret_key'               => env('PAYMONGO_SECRET_KEY'),
+        'base_url'                 => env('PAYMONGO_BASE_URL', 'https://api.paymongo.com/v1'),
         'webhook_secret'           => env('PAYMONGO_WEBHOOK_SECRET'),
-        'platform_secret_key'      => env('PAYMONGO_PLATFORM_SECRET_KEY'),
-        'platform_public_key'      => env('PAYMONGO_PLATFORM_PUBLIC_KEY'),
-        'platform_webhook_secret'  => env('PAYMONGO_PLATFORM_WEBHOOK_SECRET'),
-        'child_merchants_enabled'  => env('PAYMONGO_CHILD_MERCHANTS_ENABLED', false),
-        'child_merchants_mode'     => env('PAYMONGO_CHILD_MERCHANTS_MODE', 'hosted'),
+    ],
+
+    'mobile' => [
+        'payment_return_url' => env('MOBILE_PAYMENT_RETURN_URL', 'lexconnect://payment-return'),
     ],
 
     'slack' => [

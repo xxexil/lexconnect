@@ -12,18 +12,17 @@ class LawyerEarningsController extends Controller
     {
         $user = Auth::user();
 
-        $payments = Payment::with(['client', 'consultation'])
-            ->where('lawyer_id', $user->id)
+        $allPayments = Payment::where('lawyer_id', $user->id)
             ->latest()
             ->get();
 
-        $paidPayments  = $payments->whereIn('status', ['paid', 'downpayment_paid']);
+        $paidPayments  = $allPayments->whereIn('status', ['paid', 'downpayment_paid']);
         $totalEarned   = $paidPayments->sum('lawyer_net');
         $thisMonth     = $paidPayments->filter(fn($p) => $p->created_at->isCurrentMonth())->sum('lawyer_net');
-        $pendingAmount = $payments->where('status', 'pending')->sum('amount');
+        $pendingAmount = $allPayments->where('status', 'pending')->sum('amount');
         $totalFirmCut  = $paidPayments->sum('firm_cut');
         $totalClients  = $paidPayments->unique('client_id')->count();
 
-        return view('lawyer.earnings', compact('payments', 'totalEarned', 'thisMonth', 'pendingAmount', 'totalClients', 'totalFirmCut'));
+        return view('lawyer.earnings', compact('totalEarned', 'thisMonth', 'pendingAmount', 'totalClients', 'totalFirmCut'));
     }
 }

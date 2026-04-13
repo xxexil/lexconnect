@@ -8,6 +8,12 @@ use Illuminate\Http\Request;
 
 class AdminLawFirmController extends Controller
 {
+    public function show(LawFirmProfile $firm)
+    {
+        $firm->load('user');
+        return view('admin.law-firm-details', compact('firm'));
+    }
+
     public function index(Request $request)
     {
         $query = LawFirmProfile::with('user');

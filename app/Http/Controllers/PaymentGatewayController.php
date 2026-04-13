@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Services\ConsultationPaymentService;
 use App\Services\PayMongoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +15,7 @@ class PaymentGatewayController extends Controller
      * PayMongo redirects here after a successful payment.
      * We verify the session server-side before marking the payment as paid.
      */
-    public function success(Request $request, PayMongoService $paymongo)
+    public function success(Request $request, PayMongoService $paymongo, ConsultationPaymentService $paymentService)
     {
         $paymentId = $request->query('payment_id');
         $payment   = Payment::with('consultation')->findOrFail($paymentId);
@@ -25,9 +26,12 @@ class PaymentGatewayController extends Controller
         }
 
         // Idempotency – handle page refresh after success
-        if ($payment->status === 'downpayment_paid') {
+        if (($payment->type === 'downpayment' && $payment->status === 'downpayment_paid')
+            || ($payment->type === 'balance' && $payment->status === 'paid')) {
             return redirect()->route('consultations')
-                ->with('success', 'Your consultation is confirmed! Downpayment already recorded.');
+                ->with('success', $payment->type === 'balance'
+                    ? 'Your remaining balance has already been recorded.'
+                    : 'Your consultation is confirmed! Downpayment already recorded.');
         }
 
         // Server-side verification with PayMongo
@@ -44,10 +48,7 @@ class PaymentGatewayController extends Controller
             }
         }
 
-        $payment->update([
-            'status'     => 'downpayment_paid',
-            'lawyer_net' => $payment->amount,
-        ]);
+        $payment = $paymentService->recordSuccessfulPayment($payment);
 
         // Keep consultation status as 'pending' even after payment
         // This allows the lawyer to manually review and 'Accept' the booking

@@ -6,6 +6,7 @@ use App\Models\LawyerProfile;
 use App\Models\LawyerBlockedDate;
 use App\Models\Review;
 use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 
 class LawyerController extends Controller
@@ -18,6 +19,8 @@ class LawyerController extends Controller
             ->get();
         $blockedDates = LawyerBlockedDate::where('lawyer_id', $id)
             ->where('blocked_date', '>=', today())
+            ->get()
+            ->filter(fn(LawyerBlockedDate $blockedDate) => $blockedDate->isAllDay())
             ->pluck('blocked_date')
             ->map(fn($d) => $d->format('Y-m-d'));
         return view('lawyer-public-profile', compact('profile', 'reviews', 'blockedDates'));
@@ -41,9 +44,6 @@ class LawyerController extends Controller
         if ($request->filled('min_rating')) {
             $query->where('rating', '>=', $request->min_rating);
         }
-        if ($request->filled('availability')) {
-            $query->where('availability_status', $request->availability);
-        }
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -61,7 +61,24 @@ class LawyerController extends Controller
             default     => $query->orderBy('rating', 'desc'),
         };
 
-        $lawyers     = $query->paginate(9)->withQueryString();
+        if ($request->filled('availability')) {
+            $requestedStatus = $request->availability === 'available' ? 'active' : $request->availability;
+            $filteredLawyers = $query->get()
+                ->filter(fn (LawyerProfile $profile) => $profile->currentStatus() === $requestedStatus)
+                ->values();
+
+            $page = LengthAwarePaginator::resolveCurrentPage();
+            $lawyers = new LengthAwarePaginator(
+                $filteredLawyers->forPage($page, 9)->values(),
+                $filteredLawyers->count(),
+                9,
+                $page,
+                ['path' => LengthAwarePaginator::resolveCurrentPath()]
+            );
+            $lawyers->withQueryString();
+        } else {
+            $lawyers = $query->paginate(9)->withQueryString();
+        }
         $specialties = LawyerProfile::distinct()->orderBy('specialty')->pluck('specialty');
 
         // Get blocked dates for all displayed lawyers
@@ -70,10 +87,7 @@ class LawyerController extends Controller
             ->where('blocked_date', '>=', today())
             ->get()
             ->groupBy('lawyer_id')
-            ->map(fn($dates) => $dates->map(fn($d) => [
-                'date'   => $d->blocked_date->format('Y-m-d'),
-                'reason' => $d->reason,
-            ]));
+            ->map(fn($dates) => $dates->map(fn(LawyerBlockedDate $blockedDate) => $blockedDate->toScheduleArray())->values());
 
         // Precompute free slots for each lawyer
         $lawyerSlots = [];
@@ -83,19 +97,34 @@ class LawyerController extends Controller
                 'start' => \Carbon\Carbon::parse($c->scheduled_at),
                 'end'   => \Carbon\Carbon::parse($c->scheduled_at)->addMinutes($c->duration_minutes ?? 60),
             ]);
-            $lawyerBlocked = isset($blockedDates[$lp->user_id]) ? collect($blockedDates[$lp->user_id])->pluck('date')->toArray() : [];
+            $lawyerBlocked = isset($blockedDates[$lp->user_id]) ? collect($blockedDates[$lp->user_id]) : collect();
+            $allDayBlockedDates = $lawyerBlocked->where('is_all_day', true)->pluck('date')->toArray();
+            $blockedWindows = $lawyerBlocked
+                ->where('is_all_day', false)
+                ->map(fn($blockedDate) => [
+                    'start' => \Carbon\Carbon::parse($blockedDate['date'] . ' ' . $blockedDate['start_time']),
+                    'end' => \Carbon\Carbon::parse($blockedDate['date'] . ' ' . $blockedDate['end_time']),
+                ]);
             $freeSlots = [];
             for ($__d = 0; $__d <= 7 && count($freeSlots) < 3; $__d++) {
                 $__dayDate = \Carbon\Carbon::today()->addDays($__d)->format('Y-m-d');
-                if (in_array($__dayDate, $lawyerBlocked)) continue;
+                if (in_array($__dayDate, $allDayBlockedDates)) continue;
                 foreach ($workHours as $__hr) {
                     if (count($freeSlots) >= 3) break;
                     $__slot = \Carbon\Carbon::today()->addDays($__d)->setHour($__hr)->setMinute(0)->setSecond(0);
                     if ($__slot->isPast()) continue;
+                    $__slotEnd = $__slot->copy()->addHour();
                     $__free = true;
                     foreach ($bookedWindows as $__bw) {
-                        if ($__slot->lt($__bw['end']) && $__slot->copy()->addHour()->gt($__bw['start'])) {
+                        if ($__slot->lt($__bw['end']) && $__slotEnd->gt($__bw['start'])) {
                             $__free = false; break;
+                        }
+                    }
+                    if ($__free) {
+                        foreach ($blockedWindows as $__bw) {
+                            if ($__slot->lt($__bw['end']) && $__slotEnd->gt($__bw['start'])) {
+                                $__free = false; break;
+                            }
                         }
                     }
                     if ($__free) $freeSlots[] = $__slot;

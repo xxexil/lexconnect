@@ -102,7 +102,7 @@
             <span><i class="fas fa-clock"></i> {{ $lp->experience_years }} yrs exp.</span>
             <span><i class="fas fa-peso-sign"></i> ₱{{ number_format($lp->hourly_rate, 0) }}/hr</span>
             <span><i class="fas fa-star" style="color:#f59e0b;"></i> {{ number_format($lp->rating,1) }}</span>
-            <span class="ad-pill pill-{{ $lp->availability_status }}">{{ ucfirst($lp->availability_status) }}</span>
+            <span class="ad-pill pill-{{ $lp->currentStatusClass() }}">{{ $lp->currentStatusLabel() }}</span>
         </div>
     </div>
     <div class="ad-firm-right">
@@ -139,8 +139,8 @@
 @endif
 
 <!-- Modal Structure -->
-<div id="lawyerDocsModal" style="display:none;position:fixed;z-index:9999;top:0;left:0;width:100vw;height:100vh;background:rgba(30,41,59,0.18);align-items:center;justify-content:center;">
-    <div id="lawyerDocsModalContent" style="background:#fff;border-radius:18px;max-width:540px;width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(30,41,59,0.18);padding:32px 28px;position:relative;">
+<div id="lawyerDocsModal" style="display:none;position:fixed;z-index:9999;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,.28);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:24px;">
+    <div id="lawyerDocsModalContent" style="background:#fff;border-radius:18px;max-width:540px;width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 18px 48px rgba(15,23,42,.22);padding:32px 28px;position:relative;">
         <button onclick="closeDocsModal()" style="position:absolute;top:18px;right:18px;background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;">&times;</button>
         <div id="lawyerDocsModalBody">
             <div style="text-align:center;padding:40px 0;color:#64748b;">Loading…</div>
@@ -152,7 +152,15 @@
 function openDocsModal(lawyerId) {
     document.getElementById('lawyerDocsModal').style.display = 'flex';
     var body = document.getElementById('lawyerDocsModalBody');
+    var panel = document.getElementById('lawyerDocsModalContent');
+    var panelClose = panel.querySelector('button');
     body.innerHTML = '<div style="text-align:center;padding:40px 0;color:#64748b;">Loading…</div>';
+    panel.style.background = '#fff';
+    panel.style.borderRadius = '18px';
+    panel.style.maxWidth = '540px';
+    panel.style.padding = '32px 28px';
+    panel.style.boxShadow = '0 18px 48px rgba(15,23,42,.22)';
+    if (panelClose) panelClose.style.display = 'block';
     fetch('/admin/lawyers/' + lawyerId)
         .then(resp => resp.text())
         .then(html => {
@@ -160,7 +168,17 @@ function openDocsModal(lawyerId) {
             var temp = document.createElement('div');
             temp.innerHTML = html;
             var details = temp.querySelector('#lawyer-details-content');
-            body.innerHTML = details ? details.innerHTML : html;
+            if (details) {
+                body.innerHTML = details.outerHTML;
+                panel.style.background = 'transparent';
+                panel.style.borderRadius = '0';
+                panel.style.maxWidth = '680px';
+                panel.style.padding = '0';
+                panel.style.boxShadow = 'none';
+                if (panelClose) panelClose.style.display = 'none';
+            } else {
+                body.innerHTML = html;
+            }
         })
         .catch(() => {
             body.innerHTML = '<div style="color:#dc2626;text-align:center;padding:40px 0;">Failed to load details.</div>';

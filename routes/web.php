@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BalancePaymentController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\ResetPasswordController;
 use App\Http\Controllers\ClientProfileController;
@@ -11,7 +12,7 @@ use App\Http\Controllers\LawyerController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentGatewayController;
-use App\Http\Controllers\PayMongoChildMerchantController;
+use App\Http\Controllers\MobilePaymentRedirectController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\VideoCallController;
 use App\Http\Controllers\Lawyer\LawyerDashboardController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\Admin\AdminConsultationController;
 use App\Http\Controllers\Admin\AdminFraudRiskController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Auth;
 
 // Admin auth routes (separate from main auth)
 Route::get('/admin/login',  [AdminAuthController::class, 'showLogin'])->name('admin.login');
@@ -50,6 +52,46 @@ Route::get('/register', [AuthController::class, 'showRegister'])->name('register
 Route::post('/register',[AuthController::class, 'register']);
 Route::post('/logout',  [AuthController::class, 'logout'])->name('logout');
 
+// Email verification routes
+Route::get('/email/verify', function () {
+    return view('auth.verify-email');
+})->middleware('auth')->name('verification.notice');
+
+Route::get('/email/verify/{id}/{hash}', function (\Illuminate\Http\Request $request, $id, $hash) {
+    $user = \App\Models\User::findOrFail($id);
+
+    // Validate the hash
+    if (!hash_equals(sha1($user->getEmailForVerification()), (string) $hash)) {
+        abort(403, 'Invalid verification link.');
+    }
+
+    // Already verified
+    if ($user->hasVerifiedEmail()) {
+        Auth::login($user);
+        if ($user->role === 'lawyer' && $user->lawyerProfile) {
+            $user->lawyerProfile->update(['availability_status' => 'available']);
+        }
+        if ($user->role === 'lawyer') return redirect()->route('lawyer.dashboard')->with('verified', true);
+        if ($user->role === 'law_firm') return redirect()->route('lawfirm.dashboard')->with('verified', true);
+        return redirect()->route('dashboard')->with('verified', true);
+    }
+
+    $user->markEmailAsVerified();
+    Auth::login($user);
+    if ($user->role === 'lawyer' && $user->lawyerProfile) {
+        $user->lawyerProfile->update(['availability_status' => 'available']);
+    }
+
+    if ($user->role === 'lawyer') return redirect()->route('lawyer.dashboard')->with('verified', true);
+    if ($user->role === 'law_firm') return redirect()->route('lawfirm.dashboard')->with('verified', true);
+    return redirect()->route('dashboard')->with('verified', true);
+})->middleware('signed')->name('verification.verify');
+
+Route::post('/email/verification-notification', function (\Illuminate\Http\Request $request) {
+    $request->user()->sendEmailVerificationNotification();
+    return back()->with('resent', true);
+})->middleware(['auth', 'throttle:6,1'])->name('verification.send');
+
 // Legal pages
 Route::get('/terms',   fn() => view('legal.terms'))->name('terms');
 Route::get('/privacy', fn() => view('legal.privacy'))->name('privacy');
@@ -59,6 +101,10 @@ Route::get('forgot-password', [ForgotPasswordController::class, 'showLinkRequest
 Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
 Route::get('reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
 Route::post('reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+
+// Mobile payment callbacks use signed URLs so checkout can return to the app
+Route::get('/mobile/payment/{payment}/success', [MobilePaymentRedirectController::class, 'success'])->name('mobile.payment.success');
+Route::get('/mobile/payment/{payment}/cancel', [MobilePaymentRedirectController::class, 'cancel'])->name('mobile.payment.cancel');
 
 // Authenticated routes
 Route::middleware('auth')->group(function () {
@@ -184,6 +230,9 @@ Route::middleware('auth')->group(function () {
     // PayMongo payment gateway callbacks
     Route::get('/payment/success', [PaymentGatewayController::class, 'success'])->name('payment.success');
     Route::get('/payment/cancel',  [PaymentGatewayController::class, 'cancel'])->name('payment.cancel');
+    Route::get('/payment/balance/success', [BalancePaymentController::class, 'success'])->name('payment.balance.success');
+    Route::get('/payment/balance/cancel', [BalancePaymentController::class, 'cancel'])->name('payment.balance.cancel');
+    Route::get('/payment/balance/{payment}', [BalancePaymentController::class, 'start'])->name('payment.balance.start');
 
     // Reviews
     Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
@@ -191,6 +240,7 @@ Route::middleware('auth')->group(function () {
     // Client profile & settings
     Route::get('/profile',           [ClientProfileController::class, 'show'])->name('client.profile');
     Route::put('/profile',           [ClientProfileController::class, 'update'])->name('client.profile.update');
+    Route::post('/profile/avatar',   [ClientProfileController::class, 'updateAvatar'])->name('client.profile.avatar');
     Route::get('/settings',          [ClientSettingsController::class, 'show'])->name('client.settings');
     Route::put('/settings/password', [ClientSettingsController::class, 'updatePassword'])->name('client.settings.password');
     Route::get('/help',              fn() => view('client.help'))->name('client.help');
@@ -215,7 +265,6 @@ Route::middleware(['auth', 'lawyer'])->prefix('lawyer')->name('lawyer.')->group(
     Route::post('/profile',              [LawyerProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/avatar',       [LawyerProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::post('/profile/availability', [LawyerProfileController::class, 'updateAvailability'])->name('profile.availability');
-    Route::post('/profile/paymongo-child-merchant/start', [PayMongoChildMerchantController::class, 'startForLawyer'])->name('paymongo-child-merchant.start');
 
     Route::get('/firms',        [LawyerFirmController::class, 'index'])->name('firms');
     Route::post('/firms/apply', [LawyerFirmController::class, 'apply'])->name('firms.apply');
@@ -244,7 +293,7 @@ Route::middleware(['auth', 'lawfirm'])->prefix('lawfirm')->name('lawfirm.')->gro
 
     Route::get('/profile',  [LawFirmProfileController::class, 'show'])->name('profile');
     Route::post('/profile', [LawFirmProfileController::class, 'update'])->name('profile.update');
-    Route::post('/profile/paymongo-child-merchant/start', [PayMongoChildMerchantController::class, 'startForLawFirm'])->name('paymongo-child-merchant.start');
+    Route::post('/profile/avatar', [LawFirmProfileController::class, 'updateAvatar'])->name('profile.avatar');
 });
 
 // Admin portal routes
@@ -260,6 +309,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/lawyers/{lawyer}/uncertify',      [AdminLawyerController::class, 'uncertify'])->name('lawyers.uncertify');
 
     Route::get('/law-firms',                        [AdminLawFirmController::class, 'index'])->name('law-firms');
+    Route::get('/law-firms/{firm}',                 [AdminLawFirmController::class, 'show'])->name('law-firms.show');
     Route::post('/law-firms/{firm}/verify',         [AdminLawFirmController::class, 'verify'])->name('law-firms.verify');
     Route::post('/law-firms/{firm}/unverify',       [AdminLawFirmController::class, 'unverify'])->name('law-firms.unverify');
 

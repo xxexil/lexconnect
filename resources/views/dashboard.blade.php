@@ -296,14 +296,17 @@
                     </div>
                     <div class="appt-btns">
                         @if($c->type === 'video')
-                        @php $canJoin = now()->gte($scheduled->copy()->subMinutes(5)); @endphp
+                        @php
+                            $joinOpensAt = $c->videoJoinOpensAt();
+                            $canJoin = $c->canJoinVideoCall();
+                        @endphp
                         @if($canJoin)
                         <a href="{{ route('consultations.video', $c) }}" class="appt-btn-join">
                             <i class="fas fa-video"></i> Join Call
                         </a>
                         @else
-                        <span class="appt-btn-join disabled" title="Available at {{ $scheduled->format('g:i A') }}">
-                            <i class="fas fa-clock"></i> Starts {{ $scheduled->format('g:i A') }}
+                        <span class="appt-btn-join disabled" title="Available at {{ $joinOpensAt->format('g:i A') }}">
+                            <i class="fas fa-clock"></i> Available {{ $joinOpensAt->format('g:i A') }}
                         </span>
                         @endif
                         @else
@@ -588,5 +591,4 @@ function dbTab(name, el) {
 </script>
 
 @endsection
-
 

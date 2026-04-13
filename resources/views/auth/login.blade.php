@@ -46,9 +46,22 @@
         </div>
 
         @if ($errors->any())
+            @if(str_contains($errors->first(), 'verify'))
+            <div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:10px;padding:16px;margin-bottom:16px;font-size:.88rem;color:#92400e;">
+                <div style="display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:8px;">
+                    <i class="fas fa-envelope" style="font-size:1rem;"></i> Email Not Verified
+                </div>
+                <p style="margin:0 0 10px;">You need to verify your email before logging in. Check your inbox for the verification link from <strong>LexConnect</strong>.</p>
+                <p style="margin:0 0 10px;font-size:.82rem;color:#78350f;">Can't find it? Check your <strong>spam/junk folder</strong>.</p>
+                <a href="{{ route('verification.notice') }}" style="display:inline-block;background:#f59e0b;color:#fff;padding:8px 16px;border-radius:8px;font-size:.83rem;font-weight:700;text-decoration:none;">
+                    <i class="fas fa-paper-plane"></i> Resend Verification Email
+                </a>
+            </div>
+            @else
             <div style="background:#fff3f3;border:1px solid #dc3545;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.88rem;color:#721c24;">
                 <i class="fas fa-exclamation-circle"></i> {{ $errors->first() }}
             </div>
+            @endif
         @endif
 
         <form method="POST" action="/login">

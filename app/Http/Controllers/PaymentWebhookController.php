@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Services\ConsultationPaymentService;
 use App\Services\PayMongoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,10 @@ use Illuminate\Support\Facades\Log;
  */
 class PaymentWebhookController extends Controller
 {
+    public function __construct(private ConsultationPaymentService $paymentService)
+    {
+    }
+
     public function handle(Request $request)
     {
         $rawBody  = $request->getContent();
@@ -122,23 +127,17 @@ class PaymentWebhookController extends Controller
         }
 
         // Idempotent – skip if already processed
-        if ($payment->status === 'downpayment_paid') {
+        if (($payment->type === 'downpayment' && $payment->status === 'downpayment_paid')
+            || ($payment->type === 'balance' && $payment->status === 'paid')) {
             return;
         }
 
-        $payment->update([
-            'status'     => 'downpayment_paid',
-            'lawyer_net' => $payment->amount,
-        ]);
+        $payment = $this->paymentService->recordSuccessfulPayment($payment);
 
-        // If consultation exists and is not already pending, set to pending
-        if ($payment->consultation && $payment->consultation->status !== 'pending') {
-            $payment->consultation->update(['status' => 'pending']);
-        }
-
-        Log::info('PayMongo webhook: downpayment confirmed via webhook', [
+        Log::info('PayMongo webhook: payment confirmed via webhook', [
             'payment_id'      => $payment->id,
             'consultation_id' => $payment->consultation_id,
+            'payment_type'    => $payment->type,
         ]);
     }
 

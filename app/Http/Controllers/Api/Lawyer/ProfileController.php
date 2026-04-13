@@ -25,7 +25,7 @@ class ProfileController extends Controller
             'hourly_rate'         => $lp?->hourly_rate,
             'experience_years'    => $lp?->experience_years,
             'location'            => $lp?->location,
-            'availability_status' => $lp?->availability_status,
+            'availability_status' => $lp?->currentStatus(),
             'is_certified'        => $lp?->is_certified,
             'rating'              => $lp?->rating,
             'reviews_count'       => $lp?->reviews_count,
@@ -68,7 +68,7 @@ class ProfileController extends Controller
                 'hourly_rate'         => $lp?->hourly_rate,
                 'experience_years'    => $lp?->experience_years,
                 'location'            => $lp?->location,
-                'availability_status' => $lp?->availability_status,
+                'availability_status' => $lp?->currentStatus(),
                 'is_certified'        => $lp?->is_certified,
                 'rating'              => $lp?->rating,
                 'reviews_count'       => $lp?->reviews_count,
@@ -78,10 +78,6 @@ class ProfileController extends Controller
 
     public function updateAvailability(Request $request)
     {
-        $request->validate([
-            'availability_status' => 'required|in:available,busy,offline',
-        ]);
-
         $user = $request->user();
         $lp = $user->lawyerProfile;
 
@@ -89,8 +85,9 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Lawyer profile not found.'], 404);
         }
 
-        $lp->update(['availability_status' => $request->availability_status]);
-
-        return response()->json(['message' => 'Availability updated.', 'status' => $request->availability_status]);
+        return response()->json([
+            'message' => 'Availability is now automatic.',
+            'status' => $lp->currentStatus(),
+        ]);
     }
 }

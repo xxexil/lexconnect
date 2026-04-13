@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Lawyer;
 use App\Http\Controllers\Controller;
 use App\Models\Consultation;
 use App\Models\Payment;
+use App\Services\ConsultationPaymentService;
 use Illuminate\Http\Request;
 
 class ConsultationController extends Controller
@@ -56,7 +57,7 @@ class ConsultationController extends Controller
         return response()->json(['message' => 'Consultation declined.']);
     }
 
-    public function complete(Request $request, $id)
+    public function complete(Request $request, $id, ConsultationPaymentService $paymentService)
     {
         $user = $request->user();
         $consultation = Consultation::where('lawyer_id', $user->id)->where('status', 'upcoming')->findOrFail($id);
@@ -64,9 +65,9 @@ class ConsultationController extends Controller
 
         $balance = Payment::where('consultation_id', $consultation->id)->where('type', 'balance')->first();
         if ($balance && $balance->status === 'pending') {
-            $balance->update(['status' => 'paid']);
+            $paymentService->createBalanceCheckout($balance->loadMissing(['consultation', 'client', 'lawyer']));
         }
 
-        return response()->json(['message' => 'Consultation marked as completed.']);
+        return response()->json(['message' => 'Consultation marked as completed. The client can now pay the remaining balance.']);
     }
 }

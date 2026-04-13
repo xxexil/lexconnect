@@ -8,8 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}">
     @stack('styles')
+    @livewireStyles
 </head>
 <body class="lp-body">
 
@@ -25,7 +26,12 @@
         </div>
 
         @auth
-        @php $u = Auth::user(); $profile = $u->lawyerProfile; @endphp
+        @php
+            $u = Auth::user();
+            $profile = $u->lawyerProfile;
+            $profileStatusClass = $profile?->currentStatusClass() ?? 'offline';
+            $profileStatusLabel = $profile?->currentStatusLabel() ?? 'Offline';
+        @endphp
         <div class="lp-profile-box">
             @if($u->avatar_url)
                 <img src="{{ $u->avatar_url }}" class="lp-avatar" alt="{{ $u->name }}">
@@ -35,8 +41,8 @@
             <div class="lp-profile-info">
                 <div class="lp-profile-name">{{ $u->name }}</div>
                 <div class="lp-profile-spec">{{ $profile->specialty ?? 'Attorney at Law' }}</div>
-                <div class="lp-avail-badge-sm {{ $profile->availability_status ?? 'available' }}">
-                    <span class="dot"></span> {{ ucfirst($profile->availability_status ?? 'available') }}
+                <div class="lp-avail-badge-sm {{ $profileStatusClass }}">
+                    <span class="dot"></span> {{ $profileStatusLabel }}
                 </div>
             </div>
         </div>
@@ -199,6 +205,7 @@ setTimeout(function() {
 </script>
 @endauth
 
+@livewireScripts
 @vite(['resources/js/app.js'])
 </body>
 </html>

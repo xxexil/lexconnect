@@ -23,24 +23,26 @@ class AuthController extends Controller
         ]);
         if (Auth::attempt($request->only('email','password'), $request->boolean('remember'))) {
             $request->session()->regenerate();
-            $role = Auth::user()->role;
-            // Automatically set lawyer status to available on login
+            $user = Auth::user();
+
+            // Block unverified users
+            if (!$user->hasVerifiedEmail()) {
+                Auth::logout();
+                return back()->withErrors(['email' => 'Please verify your email address before logging in. Check your inbox for the verification link.'])->onlyInput('email');
+            }
+
+            $role = $user->role;
             if ($role === 'lawyer') {
-                $profile = Auth::user()->lawyerProfile;
-                if ($profile) {
-                    $profile->update(['availability_status' => 'available']);
-                }
+                $profile = $user->lawyerProfile;
+                if ($profile) $profile->update(['availability_status' => 'available']);
                 return redirect()->route('lawyer.dashboard');
             }
             if ($role === 'admin') {
-                // Admin must use the dedicated admin login page
                 Auth::logout();
                 $request->session()->invalidate();
                 return redirect()->route('admin.login')->withErrors(['email' => 'Please use the admin login portal.']);
             }
-            if ($role === 'law_firm') {
-                return redirect()->route('lawfirm.dashboard');
-            }
+            if ($role === 'law_firm') return redirect()->route('lawfirm.dashboard');
             return redirect()->route('dashboard');
         }
         return back()->withErrors(['email' => 'Invalid credentials.'])->onlyInput('email');
@@ -49,7 +51,7 @@ class AuthController extends Controller
     public function showRegister() {
         $lawFirms = LawFirmProfile::select(
             'id','firm_name','tagline','description','address','city',
-            'website','phone','founded_year','firm_size','specialties',
+            'website','phone','founded_year','firm_size','cut_percentage','specialties',
             'rating','reviews_count','is_verified'
         )->get();
         return view('auth.register', compact('lawFirms'));
@@ -65,15 +67,22 @@ class AuthController extends Controller
             'password'         => 'required|min:6|confirmed',
             'role'             => 'required|in:client,lawyer,law_firm',
             'firm_name'        => 'required_if:role,law_firm|nullable|string|max:150',
+            'city'             => 'nullable|string|max:100',
+            'phone'            => 'nullable|string|max:30',
+            'website'          => 'nullable|url|max:200',
             'specialty'        => 'required_if:role,lawyer|nullable|string|max:100',
             'firm'             => 'nullable|string|max:150',
             'hourly_rate'      => 'required_if:role,lawyer|nullable|numeric|min:0',
             'experience_years' => 'required_if:role,lawyer|nullable|integer|min:0',
             'location'         => 'nullable|string|max:150',
+            'dti_sec_registration' => 'required_if:role,law_firm|nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'business_permit'  => 'required_if:role,law_firm|nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'valid_id'         => 'required_if:role,law_firm|nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'ibp_id'           => 'required_if:role,lawyer|nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'firm_ibp_id'      => 'required_if:role,law_firm|nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'agreed_terms'     => $request->role === 'lawyer' ? 'required|accepted' : 'nullable',
             'agreed_terms_client_firm' => in_array($request->role, ['client', 'law_firm']) ? 'required|accepted' : 'nullable',
             'government_id'    => 'required_if:role,lawyer|nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'ibp_id'           => 'required_if:role,lawyer|nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         // Build full name for lawyer from split fields
@@ -130,25 +139,52 @@ class AuthController extends Controller
             }
 
             Auth::login($user);
-            return redirect()->route('lawyer.dashboard');
+            $user->sendEmailVerificationNotification();
+            Auth::logout();
+            return redirect()->route('verification.notice')->with('registered', true);
         }
 
         if ($request->role === 'law_firm') {
+            $dtiSecPath = $request->hasFile('dti_sec_registration')
+                ? $request->file('dti_sec_registration')->store('law-firm-docs', 'public')
+                : null;
+            $businessPermitPath = $request->hasFile('business_permit')
+                ? $request->file('business_permit')->store('law-firm-docs', 'public')
+                : null;
+            $validIdPath = $request->hasFile('valid_id')
+                ? $request->file('valid_id')->store('law-firm-docs', 'public')
+                : null;
+            $ibpIdPath = $request->hasFile('firm_ibp_id')
+                ? $request->file('firm_ibp_id')->store('law-firm-docs', 'public')
+                : null;
+
             LawFirmProfile::create([
                 'user_id'   => $user->id,
                 'firm_name' => $request->firm_name,
+                'city'      => $request->city,
+                'phone'     => $request->phone,
+                'website'   => $request->website,
                 'firm_size' => 'small',
+                'cut_percentage' => 5,
                 'specialties' => [],
                 'is_verified' => false,
+                'dti_sec_registration_doc' => $dtiSecPath,
+                'business_permit_doc' => $businessPermitPath,
+                'valid_id_doc' => $validIdPath,
+                'ibp_id_doc' => $ibpIdPath,
                 'rating'      => 0,
                 'reviews_count' => 0,
             ]);
             Auth::login($user);
-            return redirect()->route('lawfirm.dashboard');
+            $user->sendEmailVerificationNotification();
+            Auth::logout();
+            return redirect()->route('verification.notice')->with('registered', true);
         }
 
         Auth::login($user);
-        return redirect()->route('dashboard');
+        $user->sendEmailVerificationNotification();
+        Auth::logout();
+        return redirect()->route('verification.notice')->with('registered', true);
     }
 
     public function logout(Request $request) {

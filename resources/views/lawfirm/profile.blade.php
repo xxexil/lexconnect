@@ -37,14 +37,20 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
     background: rgba(255,255,255,.03);
 }
 .fp-hero-inner { display: flex; align-items: center; gap: 28px; position: relative; z-index: 1; }
+.fp-avatar-form {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    align-self: stretch; justify-content: flex-end; flex-shrink: 0;
+}
 .fp-hero-badge {
-    width: 90px; height: 90px; border-radius: 20px;
+    width: 86px; height: 86px; border-radius: 18px;
     background: rgba(255,255,255,.15);
     border: 2px solid rgba(255,255,255,.25);
     display: flex; align-items: center; justify-content: center;
-    font-size: 2rem; font-weight: 800; color: #fff;
+    font-size: 1.85rem; font-weight: 800; color: #fff;
     flex-shrink: 0; letter-spacing: -1px;
+    position: relative; overflow: hidden;
 }
+.fp-hero-badge img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 16px; }
 .fp-hero-name { font-size: 1.65rem; font-weight: 800; margin: 0 0 4px; }
 .fp-hero-tagline { font-size: .9rem; color: rgba(255,255,255,.7); margin: 0 0 14px; }
 .fp-hero-pills { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -89,6 +95,8 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
     margin-bottom: 10px; font-size: .875rem; color: #374151;
 }
 .fp-info-row:last-child { margin-bottom: 0; }
+.fp-info-row a { color: #2563eb; text-decoration: none; }
+.fp-info-row a:hover { text-decoration: underline; }
 .fp-info-icon { color: #c17f24; width: 16px; flex-shrink: 0; margin-top: 2px; }
 .fp-spec-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .fp-spec-tag {
@@ -138,7 +146,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
 .fp-spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 8px; margin-bottom: 6px; }
 .fp-spec-label {
     display: flex; align-items: center; gap: 8px;
-    font-size: .85rem; cursor: pointer;
+    font-size: .85rem; cursor: pointer; color: #334155;
     padding: 9px 12px;
     border: 1.5px solid #e8edf5;
     border-radius: 9px;
@@ -146,6 +154,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
     user-select: none;
 }
 .fp-spec-label:hover { border-color: #8ab89a; background: #f0f7f2; }
+.fp-spec-label span { color: #334155; }
 .fp-spec-label input:checked ~ * { color: #1e2d4d; }
 .fp-spec-label:has(input:checked) { border-color: #1a3d2b; background: #eaf5ee; }
 
@@ -158,6 +167,17 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
     margin-top: 8px; transition: background .2s;
 }
 .fp-save-btn:hover { background: #122b1e; }
+.fp-upload-label {
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    width:100%; min-height:50px; padding:12px 14px;
+    border:1.5px dashed #bfd9c8; border-radius:12px;
+    background:#f8fcf9; color:#1a3d2b; font-weight:700; cursor:pointer;
+    transition:border-color .15s, background .15s, color .15s;
+    box-sizing:border-box; text-align:center;
+}
+.fp-upload-label:hover { border-color:#1a3d2b; background:#eef7f1; }
+.fp-upload-label input[type=file] { display:none; }
+.fp-upload-name { margin-top:6px; font-size:.78rem; color:#64748b; word-break:break-word; }
 
 /* Alert */
 .fp-alert-success {
@@ -176,31 +196,31 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
 .fp-grid { display: grid; grid-template-columns: 300px 1fr; gap: 22px; align-items: start; }
 @media (max-width: 960px) { .fp-grid { grid-template-columns: 1fr; } }
 
-.fp-merchant-card {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid #e8edf5;
-    box-shadow: 0 1px 6px rgba(0,0,0,.05);
-    overflow: hidden;
-    margin-bottom: 18px;
-}
-.fp-merchant-card-body { padding: 20px 22px; }
-.fp-merchant-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    border-radius: 999px;
-    font-size: .74rem;
-    font-weight: 700;
-    border: 1px solid currentColor;
-}
 </style>
 
 {{-- ── HERO BANNER ── --}}
 <div class="fp-hero">
     <div class="fp-hero-inner">
-        <div class="fp-hero-badge">{{ strtoupper(substr($firm->firm_name, 0, 2)) }}</div>
+        {{-- Clickable avatar --}}
+        <form method="POST" action="{{ route('lawfirm.profile.avatar') }}" enctype="multipart/form-data" id="lfAvatarForm" class="fp-avatar-form">
+            @csrf
+            <div class="fp-hero-badge" onclick="document.getElementById('lfAvatarInput').click()"
+                 style="cursor:pointer;" title="Click to change photo">
+                @if(Auth::user()->avatar_url)
+                    <img src="{{ Auth::user()->avatar_url }}" id="lfAvatarPreview" alt="{{ $firm->firm_name }}"
+                         onerror="handleLfAvatarError()">
+                    <span id="lfAvatarInitials" style="display:none;">{{ strtoupper(substr($firm->firm_name, 0, 2)) }}</span>
+                @else
+                    <span id="lfAvatarInitials">{{ strtoupper(substr($firm->firm_name, 0, 2)) }}</span>
+                    <img src="" id="lfAvatarPreview" alt="{{ $firm->firm_name }}" style="display:none;">
+                @endif
+                <div style="position:absolute;inset:0;background:rgba(0,0,0,.35);border-radius:16px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;" id="lfAvatarOverlay">
+                    <i class="fas fa-camera" style="color:#fff;font-size:1.2rem;"></i>
+                </div>
+            </div>
+            <input type="file" id="lfAvatarInput" name="avatar" accept="image/*" style="display:none;"
+                   onchange="previewLfAvatar(this)">
+        </form>
         <div>
             <div class="fp-hero-name">{{ $firm->firm_name }}</div>
             @if($firm->tagline)
@@ -253,50 +273,6 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
 <div class="fp-grid">
     {{-- ── LEFT: FIRM INFO CARD ── --}}
     <div>
-        @php
-            $merchantTone = $paymongoMerchant->status_tone ?? 'neutral';
-            $merchantStatus = $paymongoMerchant->status_label ?? 'Not Started';
-            $merchantToneStyles = [
-                'success' => ['bg' => '#ecfdf5', 'border' => '#6ee7b7', 'text' => '#065f46'],
-                'info' => ['bg' => '#eff6ff', 'border' => '#93c5fd', 'text' => '#1d4ed8'],
-                'warning' => ['bg' => '#fffbeb', 'border' => '#fcd34d', 'text' => '#b45309'],
-                'danger' => ['bg' => '#fef2f2', 'border' => '#fca5a5', 'text' => '#b91c1c'],
-                'neutral' => ['bg' => '#f8fafc', 'border' => '#dbe3ef', 'text' => '#475569'],
-            ];
-            $merchantPalette = $merchantToneStyles[$merchantTone] ?? $merchantToneStyles['neutral'];
-        @endphp
-
-        <div class="fp-merchant-card" style="border-color: {{ $merchantPalette['border'] }}; background: {{ $merchantPalette['bg'] }};">
-            <div class="fp-merchant-card-body">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
-                    <div class="fp-info-section-title" style="margin-bottom:0;color:{{ $merchantPalette['text'] }};">
-                        <i class="fas fa-store"></i> PayMongo Child Merchant
-                    </div>
-                    <span class="fp-merchant-pill" style="color:{{ $merchantPalette['text'] }};background:#fff;border-color:{{ $merchantPalette['border'] }};">
-                        {{ $merchantStatus }}
-                    </span>
-                </div>
-                <div style="font-size:.86rem;color:#475569;line-height:1.6;">
-                    {{ $childMerchantSupportMessage }}
-                </div>
-                @if($paymongoMerchant)
-                    <div style="margin-top:10px;font-size:.78rem;color:#64748b;">
-                        Mode: {{ ucfirst($paymongoMerchant->onboarding_mode) }}
-                        @if($paymongoMerchant->last_synced_at)
-                            • Synced {{ $paymongoMerchant->last_synced_at->diffForHumans() }}
-                        @endif
-                    </div>
-                @endif
-                <form method="POST" action="{{ route('lawfirm.paymongo-child-merchant.start') }}" style="margin-top:14px;">
-                    @csrf
-                    <button type="submit" class="fp-save-btn" style="width:100%;justify-content:center;margin-top:0;">
-                        <i class="fas fa-link"></i>
-                        {{ $paymongoMerchant ? 'Refresh Child Merchant Setup' : 'Prepare Child Merchant Setup' }}
-                    </button>
-                </form>
-            </div>
-        </div>
-
         {{-- Contact info --}}
         <div class="fp-info-card">
             <div class="fp-info-section">
@@ -316,6 +292,42 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                 @if(!$firm->city && !$firm->phone && !$firm->website)
                 <div style="font-size:.85rem;color:#9ca3af;">No contact details added yet.</div>
                 @endif
+            </div>
+
+            <div class="fp-info-section">
+                <div class="fp-info-section-title"><i class="fas fa-folder-open"></i> Registration Documents</div>
+                <div class="fp-info-row">
+                    <i class="fas fa-building-shield fp-info-icon"></i>
+                    @if($firm->dti_sec_registration_doc)
+                        <a href="{{ asset('storage/' . $firm->dti_sec_registration_doc) }}" target="_blank">View DTI/SEC Registration</a>
+                    @else
+                        <span style="color:#9ca3af;">No DTI/SEC registration uploaded yet.</span>
+                    @endif
+                </div>
+                <div class="fp-info-row">
+                    <i class="fas fa-file-signature fp-info-icon"></i>
+                    @if($firm->business_permit_doc)
+                        <a href="{{ asset('storage/' . $firm->business_permit_doc) }}" target="_blank">View Business Permit</a>
+                    @else
+                        <span style="color:#9ca3af;">No business permit uploaded yet.</span>
+                    @endif
+                </div>
+                <div class="fp-info-row">
+                    <i class="fas fa-id-card fp-info-icon"></i>
+                    @if($firm->valid_id_doc)
+                        <a href="{{ asset('storage/' . $firm->valid_id_doc) }}" target="_blank">View Valid ID</a>
+                    @else
+                        <span style="color:#9ca3af;">No valid ID uploaded yet.</span>
+                    @endif
+                </div>
+                <div class="fp-info-row">
+                    <i class="fas fa-file-certificate fp-info-icon"></i>
+                    @if($firm->ibp_id_doc)
+                        <a href="{{ asset('storage/' . $firm->ibp_id_doc) }}" target="_blank">View IBP ID</a>
+                    @else
+                        <span style="color:#9ca3af;">No IBP ID uploaded yet.</span>
+                    @endif
+                </div>
             </div>
 
             @if($firm->description)
@@ -357,7 +369,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
             </div>
         </div>
         <div class="fp-form-body">
-            <form method="POST" action="{{ route('lawfirm.profile.update') }}">
+            <form method="POST" action="{{ route('lawfirm.profile.update') }}" enctype="multipart/form-data">
                 @csrf
 
                 {{-- Account --}}
@@ -417,6 +429,25 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                         </select>
                     </div>
                 </div>
+                <div class="lp-form-row">
+                    <div class="lp-form-group">
+                        <label class="lp-form-label">Law Firm Cut (%)</label>
+                        <input type="number" name="cut_percentage"
+                            value="{{ old('cut_percentage', $firm->cut_percentage ?? 5) }}"
+                            class="lp-form-input {{ $errors->has('cut_percentage') ? 'is-invalid' : '' }}"
+                            min="0" max="100" step="0.01" placeholder="e.g. 5">
+                        @error('cut_percentage')<div class="lp-form-err">{{ $message }}</div>@enderror
+                        <div style="margin-top:6px;font-size:.78rem;color:#6b7280;">
+                            This percentage is deducted from a member lawyer's balance payment when a consultation is completed.
+                        </div>
+                    </div>
+                    <div class="lp-form-group">
+                        <label class="lp-form-label">Current Split</label>
+                        <div class="lp-form-input" style="background:#f8f9fb;color:#475569;">
+                            Firm {{ old('cut_percentage', $firm->cut_percentage ?? 5) }}% / Lawyer {{ 100 - (float) old('cut_percentage', $firm->cut_percentage ?? 5) }}%
+                        </div>
+                    </div>
+                </div>
 
                 {{-- Location & Contact --}}
                 <div class="fp-section-divider">
@@ -445,6 +476,75 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                         <label class="lp-form-label">Website</label>
                         <input type="url" name="website" value="{{ old('website', $firm->website) }}"
                             class="lp-form-input" placeholder="https://yourfirm.com">
+                    </div>
+                </div>
+
+                <div class="fp-section-divider">
+                    <span class="fp-section-divider-label"><i class="fas fa-folder-open"></i> Registration Documents</span>
+                    <span class="fp-section-divider-line"></span>
+                </div>
+                <div class="lp-form-row">
+                    <div class="lp-form-group">
+                        <label class="lp-form-label">DTI/SEC Registration</label>
+                        <label class="fp-upload-label">
+                            <i class="fas fa-building-shield"></i> Upload DTI/SEC Registration
+                            <input type="file" name="dti_sec_registration" accept="image/*,.pdf">
+                        </label>
+                        <div class="fp-upload-name">
+                            @if($firm->dti_sec_registration_doc)
+                                Current file: <a href="{{ asset('storage/' . $firm->dti_sec_registration_doc) }}" target="_blank">View uploaded document</a>
+                            @else
+                                No file uploaded yet.
+                            @endif
+                        </div>
+                        @error('dti_sec_registration')<div class="lp-form-err">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="lp-form-group">
+                        <label class="lp-form-label">Business Permit</label>
+                        <label class="fp-upload-label">
+                            <i class="fas fa-file-signature"></i> Upload Business Permit
+                            <input type="file" name="business_permit" accept="image/*,.pdf">
+                        </label>
+                        <div class="fp-upload-name">
+                            @if($firm->business_permit_doc)
+                                Current file: <a href="{{ asset('storage/' . $firm->business_permit_doc) }}" target="_blank">View uploaded document</a>
+                            @else
+                                No file uploaded yet.
+                            @endif
+                        </div>
+                        @error('business_permit')<div class="lp-form-err">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+                <div class="lp-form-row">
+                    <div class="lp-form-group">
+                        <label class="lp-form-label">Valid ID</label>
+                        <label class="fp-upload-label">
+                            <i class="fas fa-id-card"></i> Upload Valid ID
+                            <input type="file" name="valid_id" accept="image/*,.pdf">
+                        </label>
+                        <div class="fp-upload-name">
+                            @if($firm->valid_id_doc)
+                                Current file: <a href="{{ asset('storage/' . $firm->valid_id_doc) }}" target="_blank">View uploaded document</a>
+                            @else
+                                No file uploaded yet.
+                            @endif
+                        </div>
+                        @error('valid_id')<div class="lp-form-err">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="lp-form-group">
+                        <label class="lp-form-label">IBP ID</label>
+                        <label class="fp-upload-label">
+                            <i class="fas fa-file-certificate"></i> Upload IBP ID
+                            <input type="file" name="firm_ibp_id" accept="image/*,.pdf">
+                        </label>
+                        <div class="fp-upload-name">
+                            @if($firm->ibp_id_doc)
+                                Current file: <a href="{{ asset('storage/' . $firm->ibp_id_doc) }}" target="_blank">View uploaded document</a>
+                            @else
+                                No file uploaded yet.
+                            @endif
+                        </div>
+                        @error('firm_ibp_id')<div class="lp-form-err">{{ $message }}</div>@enderror
                     </div>
                 </div>
 
@@ -492,5 +592,36 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
         </div>
     </div>
 </div>
+
+<script>
+(function(){
+    var badge = document.querySelector('.fp-hero-badge');
+    var overlay = document.getElementById('lfAvatarOverlay');
+    if (badge && overlay) {
+        badge.addEventListener('mouseenter', function(){ overlay.style.opacity='1'; });
+        badge.addEventListener('mouseleave', function(){ overlay.style.opacity='0'; });
+    }
+})();
+
+function handleLfAvatarError() {
+    var preview = document.getElementById('lfAvatarPreview');
+    var initials = document.getElementById('lfAvatarInitials');
+    if (preview) preview.style.display = 'none';
+    if (initials) initials.style.display = 'block';
+}
+
+function previewLfAvatar(input) {
+    if (!input.files || !input.files[0]) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var preview = document.getElementById('lfAvatarPreview');
+        var initials = document.getElementById('lfAvatarInitials');
+        if (preview) { preview.src = e.target.result; preview.style.display = 'block'; }
+        if (initials) initials.style.display = 'none';
+        document.getElementById('lfAvatarForm').submit();
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+</script>
 
 @endsection

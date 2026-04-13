@@ -296,6 +296,7 @@
 </div>
 @foreach($completed as $c)
 @php $sched = \Carbon\Carbon::parse($c->scheduled_at); @endphp
+@php $balancePayment = $c->payments->firstWhere('type', 'balance'); @endphp
 <div class="mc-card" style="border-left:4px solid #059669;">
     <div class="mc-avatar">
         <img src="{{ $c->lawyer->avatar_url ?? asset('images/default-avatar.png') }}" alt="{{ $c->lawyer->name }}">
@@ -325,9 +326,24 @@
                 </button>
             @endif
         </div>
+        @if($balancePayment)
+        <div style="margin-top:10px;font-size:.82rem;color:#475569;">
+            Remaining balance:
+            @if($balancePayment->status === 'paid')
+                <strong style="color:#059669;">Paid (₱{{ number_format($balancePayment->amount, 2) }})</strong>
+            @else
+                <strong style="color:#d97706;">Pending (₱{{ number_format($balancePayment->amount, 2) }})</strong>
+            @endif
+        </div>
+        @endif
     </div>
     <div class="mc-right">
         <span class="mc-badge completed"><span class="dot"></span> Completed</span>
+        @if($balancePayment && $balancePayment->status === 'pending')
+        <a href="{{ route('payment.balance.start', $balancePayment) }}" class="mc-btn-join" style="background:#059669;">
+            <i class="fas fa-credit-card"></i> Pay Remaining Balance
+        </a>
+        @endif
         <div class="mc-price">₱{{ number_format($c->price, 0) }}</div>
     </div>
 </div>
@@ -367,7 +383,7 @@
     <i class="fas fa-calendar-times"></i>
     <h3>No consultations yet</h3>
     <p>Book your first consultation with one of our certified lawyers.</p>
-    <a href="{{ route('find-lawyers') }}" class="mc-book-btn" style="display:inline-flex;">
+    <a href="{{ route('find-lawyers') }}" class="mc-book-btn" style="display:inline-flex;padding:9px 20px;font-size:.88rem;">
         <i class="fas fa-search"></i> Find a Lawyer
     </a>
 </div>

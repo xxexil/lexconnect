@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class LawFirmMessageController extends Controller
 {
@@ -67,27 +68,71 @@ class LawFirmMessageController extends Controller
     {
         $request->validate([
             'conversation_id' => 'required|exists:conversations,id',
-            'body'            => 'required|string|max:2000',
+            'body'            => 'nullable|string|max:2000',
+            'attachment'      => 'nullable|file|max:10240|mimes:jpeg,png,jpg,gif,webp,pdf,doc,docx,txt',
+            'attachments'     => 'nullable|array',
+            'attachments.*'   => 'file|max:10240|mimes:jpeg,png,jpg,gif,webp,pdf,doc,docx,txt',
         ]);
 
         $conv = Conversation::findOrFail($request->conversation_id);
+        $attachments = [];
         if ($conv->client_id !== Auth::id()) abort(403);
 
-        $message = Message::create([
-            'conversation_id' => $conv->id,
-            'sender_id'       => Auth::id(),
-            'body'            => $request->body,
-        ]);
+        if ($request->hasFile('attachment')) {
+            $attachments[] = $request->file('attachment');
+        }
+        if ($request->hasFile('attachments')) {
+            $attachments = array_merge($attachments, $request->file('attachments'));
+        }
 
-        try { broadcast(new MessageSent($message))->toOthers(); } catch (\Exception $e) {}
+        if (!$request->filled('body') && count($attachments) === 0) {
+            return response()->json(['error' => 'Message or attachment required.'], 422);
+        }
+
+        $messages = collect();
+        $batchUuid = count($attachments) > 1 ? (string) Str::uuid() : null;
+
+        if (count($attachments) === 0) {
+            $messages->push(Message::create([
+                'conversation_id' => $conv->id,
+                'sender_id' => Auth::id(),
+                'body' => $request->body ?? '',
+            ]));
+        } else {
+            foreach ($attachments as $index => $file) {
+                $path = $file->store('message-attachments', 'public');
+                $messages->push(Message::create([
+                    'conversation_id' => $conv->id,
+                    'sender_id' => Auth::id(),
+                    'body' => $index === 0 ? ($request->body ?? '') : '',
+                    'attachment_path' => $path,
+                    'attachment_name' => $file->getClientOriginalName(),
+                    'attachment_type' => str_starts_with($file->getMimeType(), 'image/') ? 'image' : 'file',
+                    'batch_uuid' => $batchUuid,
+                ]));
+            }
+        }
+
+        $messages->each(function (Message $message) {
+            try { broadcast(new MessageSent($message))->toOthers(); } catch (\Exception $e) {}
+        });
 
         if ($request->expectsJson()) {
-            $message->load('sender');
             return response()->json([
-                'id'        => $message->id,
-                'sender_id' => $message->sender_id,
-                'body'      => $message->body,
-                'time'      => $message->created_at->format('g:i A'),
+                'messages' => $messages->map(function (Message $message) {
+                    $message->load('sender');
+
+                    return [
+                        'id' => $message->id,
+                        'sender_id' => $message->sender_id,
+                        'body' => $message->body,
+                        'time' => $message->created_at->format('g:i A'),
+                        'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
+                        'attachment_name' => $message->attachment_name,
+                        'attachment_type' => $message->attachment_type,
+                        'batch_uuid' => $message->batch_uuid,
+                    ];
+                })->values(),
             ]);
         }
 

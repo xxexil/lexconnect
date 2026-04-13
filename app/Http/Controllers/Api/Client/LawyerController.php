@@ -13,8 +13,7 @@ class LawyerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = LawyerProfile::with('user:id,name,avatar,email')
-            ->where('availability_status', '!=', 'offline');
+        $query = LawyerProfile::with('user:id,name,avatar,email');
 
         if ($request->filled('specialty')) {
             $query->where('specialty', 'like', '%' . $request->specialty . '%');
@@ -54,7 +53,7 @@ class LawyerController extends Controller
             'experience_years'    => $lp->experience_years,
             'rating'              => $lp->rating,
             'reviews_count'       => $lp->reviews_count,
-            'availability_status' => $lp->availability_status,
+            'availability_status' => $lp->currentStatus(),
             'is_certified'        => $lp->is_certified,
         ]);
 
@@ -108,7 +107,7 @@ class LawyerController extends Controller
             'experience_years'          => $lp?->experience_years,
             'rating'                    => $lp?->rating,
             'reviews_count'             => $lp?->reviews_count,
-            'availability_status'       => $lp?->availability_status,
+            'availability_status'       => $lp?->currentStatus(),
             'is_certified'              => $lp?->is_certified,
             'firm'                      => $lp?->firm,
             'reviews'                   => $reviews,

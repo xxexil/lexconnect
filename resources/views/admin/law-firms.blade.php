@@ -56,6 +56,13 @@
 .pill-unverified { background: #fee2e2; color: #991b1b; }
 
 .ad-alert-success { background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; border-radius: 12px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+.ad-review-btn {
+    padding: 8px 18px; background: #fff; color: #1a3d2b;
+    border: 1.5px solid #bfd9c8; border-radius: 9px; font-size: .84rem; font-weight: 700;
+    cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px;
+    transition: background .15s, border-color .15s;
+}
+.ad-review-btn:hover { background: #f0f7f2; border-color: #8db49b; }
 </style>
 
 @if(session('success'))
@@ -102,6 +109,9 @@
         @endif
     </div>
     <div class="ad-firm-right">
+        <button type="button" class="ad-review-btn" onclick="openFirmDocsModal({{ $firm->id }})">
+            <i class="fas fa-folder-open"></i> Review Docs
+        </button>
         @if($firm->is_verified)
             <span class="ad-pill pill-verified"><i class="fas fa-circle-check"></i> Verified</span>
             <form method="POST" action="{{ route('admin.law-firms.unverify', $firm) }}">
@@ -132,5 +142,54 @@
 @if($firms->hasPages())
 <div style="margin-top:16px;">{{ $firms->links() }}</div>
 @endif
+
+<div id="firmDocsModal" style="display:none;position:fixed;z-index:9999;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,.28);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:24px;">
+    <div id="firmDocsModalContent" style="background:#fff;border-radius:18px;max-width:540px;width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 18px 48px rgba(15,23,42,.22);padding:32px 28px;position:relative;">
+        <button onclick="closeFirmDocsModal()" style="position:absolute;top:18px;right:18px;background:none;border:none;font-size:1.5rem;color:#64748b;cursor:pointer;">&times;</button>
+        <div id="firmDocsModalBody">
+            <div style="text-align:center;padding:40px 0;color:#64748b;">Loading…</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openFirmDocsModal(firmId) {
+    document.getElementById('firmDocsModal').style.display = 'flex';
+    var body = document.getElementById('firmDocsModalBody');
+    var panel = document.getElementById('firmDocsModalContent');
+    var panelClose = panel.querySelector('button');
+    body.innerHTML = '<div style="text-align:center;padding:40px 0;color:#64748b;">Loading…</div>';
+    panel.style.background = '#fff';
+    panel.style.borderRadius = '18px';
+    panel.style.maxWidth = '540px';
+    panel.style.padding = '32px 28px';
+    panel.style.boxShadow = '0 18px 48px rgba(15,23,42,.22)';
+    if (panelClose) panelClose.style.display = 'block';
+    fetch('/admin/law-firms/' + firmId)
+        .then(resp => resp.text())
+        .then(html => {
+            var temp = document.createElement('div');
+            temp.innerHTML = html;
+            var details = temp.querySelector('#law-firm-details-content');
+            if (details) {
+                body.innerHTML = details.outerHTML;
+                panel.style.background = 'transparent';
+                panel.style.borderRadius = '0';
+                panel.style.maxWidth = '720px';
+                panel.style.padding = '0';
+                panel.style.boxShadow = 'none';
+                if (panelClose) panelClose.style.display = 'none';
+            } else {
+                body.innerHTML = html;
+            }
+        })
+        .catch(() => {
+            body.innerHTML = '<div style="color:#dc2626;text-align:center;padding:40px 0;">Failed to load details.</div>';
+        });
+}
+function closeFirmDocsModal() {
+    document.getElementById('firmDocsModal').style.display = 'none';
+}
+</script>
 
 @endsection

@@ -7,7 +7,7 @@
 <noscript><meta http-equiv="refresh" content="5"></noscript>
 <style>
 .main-content { padding: 0; max-width: 100%; }
-.msg-layout { display: flex; height: calc(100vh - 70px); background: #f5f7fa; overflow: hidden; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,.07); }
+.msg-layout { display: flex; height: calc(100vh - 70px); background: #f5f7fa; overflow: hidden; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,.07); min-width: 0; }
 
 /* Sidebar */
 .msg-sidebar { width: 300px; flex-shrink: 0; background: #fff; display: flex; flex-direction: column; border-right: 1px solid #f0f2f5; }
@@ -33,14 +33,15 @@
 .msg-chat-status { font-size: .75rem; color: #6b7280; display: flex; align-items: center; gap: 5px; margin-top: 2px; }
 
 /* Bubbles */
-.msg-bubbles { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 6px; background: #f5f7fa; }
+.msg-bubbles { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px 24px; display: flex; flex-direction: column; gap: 6px; background: #f5f7fa; min-width: 0; }
 .msg-bubbles::-webkit-scrollbar { width: 4px; }
 .msg-bubbles::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-.msg-bubble-wrap { display: flex; }
+.msg-bubble-wrap { display: flex; min-width: 0; max-width: 100%; }
 .msg-bubble-wrap.mine { justify-content: flex-end; }
 .msg-bubble-wrap.theirs { justify-content: flex-start; }
-.msg-bubble { max-width: 62%; }
-.msg-bubble-text { padding: 10px 14px; border-radius: 18px; font-size: .88rem; line-height: 1.55; word-break: break-word; }
+.msg-bubble { width: fit-content; max-width: 62%; min-width: 0; overflow-wrap: anywhere; }
+.msg-bubble.msg-bubble-media-only { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+.msg-bubble-text { padding: 10px 14px; border-radius: 18px; font-size: .88rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
 .msg-bubble.mine   .msg-bubble-text { background: #1e2d4d; color: #fff; border-bottom-right-radius: 4px; }
 .msg-bubble.theirs .msg-bubble-text { background: #fff; color: #1e2d4d; border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
 .msg-bubble-time { font-size: .68rem; color: #b0b7c3; margin-top: 4px; }
@@ -48,8 +49,24 @@
 .msg-bubble.theirs .msg-bubble-time { text-align: left; }
 
 /* Attachment in bubble */
-.msg-bubble-img { max-width: 220px; border-radius: 12px; display: block; margin-top: 6px; cursor: pointer; }
-.msg-bubble-file { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 10px; margin-top: 6px; font-size: .82rem; text-decoration: none; }
+.msg-bubble-img { width: auto; max-width: min(220px, 100%); max-height: 260px; height: auto; object-fit: contain; border-radius: 12px; display: block; margin-top: 6px; cursor: pointer; }
+.msg-bubble-file { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; padding: 7px 12px; border-radius: 10px; margin-top: 6px; font-size: .82rem; text-decoration: none; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+.msg-bubble-album { margin-top: 8px; width: min(240px, 100%); max-width: 100%; }
+.msg-bubble-album-stack { position: relative; width: min(200px, 100%); aspect-ratio: 4 / 3; height: auto; margin-left: 8px; cursor: pointer; }
+.msg-bubble.mine .msg-bubble-album,
+.msg-bubble.theirs .msg-bubble-album { background: transparent; }
+.msg-bubble-album-layer,
+.msg-bubble-album-cover { position: absolute; inset: 0; border-radius: 22px; box-shadow: 0 16px 36px rgba(15, 23, 42, .18); transform-origin: bottom center; }
+.msg-bubble-album-layer { background: linear-gradient(180deg, #f8fafc, #e2e8f0); border: 1px solid rgba(148, 163, 184, .35); }
+.msg-bubble-album-layer.layer-1 { transform: rotate(-8deg) translate(-10px, -8px); opacity: .95; }
+.msg-bubble-album-layer.layer-2 { transform: rotate(6deg) translate(10px, -2px); opacity: .88; }
+.msg-bubble-album-layer.layer-3 { transform: rotate(-3deg) translate(4px, -14px); opacity: .8; }
+.msg-bubble-album-cover { width: 100%; height: 100%; object-fit: cover; border: 1px solid rgba(255,255,255,.6); background: #dbe4f0; }
+.msg-bubble-album-meta { margin-top: 10px; font-size: .75rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; opacity: .8; }
+.msg-bubble.theirs .msg-bubble-album-meta,
+.msg-bubble.mine .msg-bubble-album-meta { color: #475569; }
+.msg-bubble-album-thumbs { display: none; }
+.msg-bubble-files { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .msg-bubble.mine   .msg-bubble-file { background: rgba(255,255,255,.2); color: #fff; }
 .msg-bubble.theirs .msg-bubble-file { background: #f0f2f5; color: #1e2d4d; }
 
@@ -78,6 +95,10 @@
 #imgLightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 9999; align-items: center; justify-content: center; }
 #imgLightbox.open { display: flex; }
 #imgLightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+.msg-lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; border: none; border-radius: 999px; background: rgba(15, 23, 42, .72); color: #fff; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.msg-lightbox-nav.prev { left: 24px; }
+.msg-lightbox-nav.next { right: 24px; }
+.msg-lightbox-nav[disabled] { opacity: .35; cursor: default; }
 </style>
 
 <div class="msg-layout">
@@ -96,7 +117,7 @@
         @if($activeConv)
         @php
             $other  = auth()->id() === $activeConv->client_id ? $activeConv->lawyer : $activeConv->client;
-            $status = $other->lawyerProfile->availability_status ?? 'offline';
+            $status = $other->lawyerProfile?->currentStatus() ?? 'offline';
         @endphp
         <div class="msg-chat-header">
             <div class="msg-chat-avatar">
@@ -109,28 +130,85 @@
             <div>
                 <div class="msg-chat-name">{{ $other ? $other->name : 'Unknown' }}</div>
                 <div class="msg-chat-status">
-                    <i class="fas fa-circle" id="presenceDot" style="font-size:.45rem;color:{{ $status==='available'?'#22c55e':($status==='busy'?'#f59e0b':'#d1d5db') }};"></i>
-                    <span id="presenceText">{{ $status==='available'?'Available':($status==='busy'?'Busy':'Offline') }}</span>
+                    <i class="fas fa-circle" id="presenceDot" style="font-size:.45rem;color:{{ $status==='active'?'#22c55e':($status==='busy'?'#f59e0b':'#d1d5db') }};"></i>
+                    <span id="presenceText">{{ $status==='active'?'Active':($status==='busy'?'Busy':'Offline') }}</span>
                 </div>
             </div>
         </div>
 
+        @php
+            $messageGroups = [];
+            foreach ($messages as $message) {
+                $mine = $message->sender_id === auth()->id();
+                $lastIndex = count($messageGroups) - 1;
+                $canMerge = $message->batch_uuid
+                    && $lastIndex >= 0
+                    && $messageGroups[$lastIndex]['batch_uuid'] === $message->batch_uuid
+                    && $messageGroups[$lastIndex]['sender_id'] === $message->sender_id;
+
+                if (!$canMerge) {
+                    $messageGroups[] = [
+                        'sender_id' => $message->sender_id,
+                        'mine' => $mine,
+                        'batch_uuid' => $message->batch_uuid,
+                        'body' => $message->body,
+                        'time' => $message->created_at->format('g:i A'),
+                        'attachments' => [],
+                    ];
+                    $lastIndex = count($messageGroups) - 1;
+                } elseif (!$messageGroups[$lastIndex]['body'] && $message->body) {
+                    $messageGroups[$lastIndex]['body'] = $message->body;
+                }
+
+                $messageGroups[$lastIndex]['time'] = $message->created_at->format('g:i A');
+
+                if ($message->attachment_path) {
+                    $messageGroups[$lastIndex]['attachments'][] = [
+                        'path' => asset('storage/' . $message->attachment_path),
+                        'name' => $message->attachment_name,
+                        'type' => $message->attachment_type,
+                    ];
+                }
+            }
+        @endphp
         <div class="msg-bubbles" id="bubbles">
-            @foreach($messages as $m)
-            @php $mine = $m->sender_id === auth()->id(); @endphp
-            <div class="msg-bubble-wrap {{ $mine ? 'mine' : 'theirs' }}">
-                <div class="msg-bubble {{ $mine ? 'mine' : 'theirs' }}">
-                    @if($m->body)<div class="msg-bubble-text">{{ $m->body }}</div>@endif
-                    @if($m->attachment_path)
-                        @if($m->attachment_type === 'image')
-                            <img src="{{ asset('storage/'.$m->attachment_path) }}" class="msg-bubble-img" onclick="openLightbox(this.src)" alt="{{ $m->attachment_name }}">
-                        @else
-                            <a href="{{ asset('storage/'.$m->attachment_path) }}" class="msg-bubble-file" target="_blank" download="{{ $m->attachment_name }}">
-                                <i class="fas fa-file-alt"></i> {{ $m->attachment_name }}
-                            </a>
+            @foreach($messageGroups as $group)
+            @php $imageAttachments = collect($group['attachments'])->where('type', 'image')->values(); @endphp
+            @php $fileAttachments = collect($group['attachments'])->where('type', '!=', 'image')->values(); @endphp
+            @php $isImageOnlyGroup = blank($group['body']) && $imageAttachments->count() > 0 && $fileAttachments->count() === 0; @endphp
+            <div class="msg-bubble-wrap {{ $group['mine'] ? 'mine' : 'theirs' }}" data-batch-id="{{ $group['batch_uuid'] ?? '' }}" data-mine="{{ $group['mine'] ? 1 : 0 }}">
+                <div class="msg-bubble {{ $group['mine'] ? 'mine' : 'theirs' }}{{ $isImageOnlyGroup ? ' msg-bubble-media-only' : '' }}">
+                    @if($group['body'])<div class="msg-bubble-text">{{ $group['body'] }}</div>@endif
+                    @if(count($group['attachments']) > 0)
+                        @if($imageAttachments->count() === 1)
+                            <img src="{{ $imageAttachments[0]['path'] }}" class="msg-bubble-img" style="display:block;width:auto;max-width:220px;max-height:260px;height:auto;object-fit:contain;" onclick="openLightboxFromElement(this)" alt="{{ $imageAttachments[0]['name'] }}">
+                        @elseif($imageAttachments->count() > 1)
+                            <div class="msg-bubble-album" style="width:240px;max-width:100%;" data-photo-count="{{ $imageAttachments->count() }}">
+                                <div class="msg-bubble-album-stack" style="position:relative;width:200px;max-width:100%;height:150px;" onclick="openLightboxFromElement(this)" data-first-image="{{ $imageAttachments[0]['path'] }}">
+                                    <span class="msg-bubble-album-layer layer-1" aria-hidden="true"></span>
+                                    <span class="msg-bubble-album-layer layer-2" aria-hidden="true"></span>
+                                    <span class="msg-bubble-album-layer layer-3" aria-hidden="true"></span>
+                                    <img src="{{ $imageAttachments[0]['path'] }}" class="msg-bubble-album-cover" style="width:100%;height:100%;object-fit:cover;" alt="{{ $imageAttachments[0]['name'] }}">
+                                </div>
+                                <div class="msg-bubble-album-meta">{{ $imageAttachments->count() }} photos</div>
+                                <div class="msg-bubble-album-thumbs">
+                                    @foreach($imageAttachments as $attachment)
+                                        <img src="{{ $attachment['path'] }}" alt="{{ $attachment['name'] }}">
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                        @if($fileAttachments->count() > 0)
+                            <div class="msg-bubble-files">
+                                @foreach($fileAttachments as $attachment)
+                                    <a href="{{ $attachment['path'] }}" class="msg-bubble-file" target="_blank" download="{{ $attachment['name'] }}">
+                                        <i class="fas fa-file-alt"></i> {{ $attachment['name'] }}
+                                    </a>
+                                @endforeach
+                            </div>
                         @endif
                     @endif
-                    <div class="msg-bubble-time">{{ $m->created_at->format('g:i A') }}</div>
+                    <div class="msg-bubble-time">{{ $group['time'] }}</div>
                 </div>
             </div>
             @endforeach
@@ -139,7 +217,7 @@
         <div class="msg-form-wrap">
             <div class="msg-upload-preview" id="uploadPreview" style="display:none;"></div>
             <div class="msg-form">
-                <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx,.txt" style="display:none;">
+                <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx,.txt" style="display:none;" multiple>
                 <button type="button" class="msg-attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach file">
                     <i class="fas fa-paperclip"></i>
                 </button>
@@ -159,8 +237,14 @@
     </div>
 </div>
 
-<div id="imgLightbox" onclick="this.classList.remove('open')">
+<div id="imgLightbox" onclick="closeLightbox()">
+    <button type="button" class="msg-lightbox-nav prev" id="lightboxPrev" onclick="event.stopPropagation(); showPrevLightboxImage()">
+        <i class="fas fa-chevron-left"></i>
+    </button>
     <img id="lightboxImg" src="" alt="">
+    <button type="button" class="msg-lightbox-nav next" id="lightboxNext" onclick="event.stopPropagation(); showNextLightboxImage()">
+        <i class="fas fa-chevron-right"></i>
+    </button>
 </div>
 
 <script>
@@ -187,10 +271,82 @@
         });
     }
 
-    window.openLightbox = function(src) {
-        document.getElementById('lightboxImg').src = src;
+    var lightboxImages = [];
+    var lightboxIndex = 0;
+
+    function updateLightboxNav() {
+        var prevBtn = document.getElementById('lightboxPrev');
+        var nextBtn = document.getElementById('lightboxNext');
+        var multiImage = lightboxImages.length > 1;
+        if (prevBtn) {
+            prevBtn.style.display = multiImage ? 'flex' : 'none';
+            prevBtn.disabled = !multiImage || lightboxIndex === 0;
+        }
+        if (nextBtn) {
+            nextBtn.style.display = multiImage ? 'flex' : 'none';
+            nextBtn.disabled = !multiImage || lightboxIndex === lightboxImages.length - 1;
+        }
+    }
+
+    function setLightboxImage(index) {
+        if (!lightboxImages.length) return;
+        lightboxIndex = index;
+        document.getElementById('lightboxImg').src = lightboxImages[lightboxIndex];
+        updateLightboxNav();
+    }
+
+    window.openLightbox = function(images, index) {
+        lightboxImages = Array.isArray(images) && images.length ? images : [];
+        lightboxIndex = typeof index === 'number' ? index : 0;
+        if (!lightboxImages.length) return;
+        setLightboxImage(lightboxIndex);
         document.getElementById('imgLightbox').classList.add('open');
     };
+
+    window.openLightboxFromElement = function(element) {
+        if (!element) return;
+        var images = [];
+        var index = 0;
+
+        if (element.classList.contains('msg-bubble-album-stack')) {
+            var album = element.closest('.msg-bubble-album');
+            if (album) {
+                images = Array.from(album.querySelectorAll('.msg-bubble-album-thumbs img')).map(function(img){ return img.src; });
+            }
+        } else if (element.tagName === 'IMG') {
+            images = [element.src];
+        }
+
+        openLightbox(images, index);
+    };
+
+    window.showPrevLightboxImage = function() {
+        if (lightboxIndex > 0) setLightboxImage(lightboxIndex - 1);
+    };
+
+    window.showNextLightboxImage = function() {
+        if (lightboxIndex < lightboxImages.length - 1) setLightboxImage(lightboxIndex + 1);
+    };
+
+    window.closeLightbox = function() {
+        document.getElementById('imgLightbox').classList.remove('open');
+    };
+
+    document.addEventListener('keydown', function(event) {
+        var lightbox = document.getElementById('imgLightbox');
+        if (!lightbox || !lightbox.classList.contains('open')) return;
+
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            showPrevLightboxImage();
+        } else if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            showNextLightboxImage();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            closeLightbox();
+        }
+    });
 
     var currentUserId = {{ auth()->id() }};
     var convId   = document.getElementById('convId') ? parseInt(document.getElementById('convId').value) : null;
@@ -199,97 +355,188 @@
     var csrfToken= (document.querySelector('meta[name="csrf-token"]')||{getAttribute:function(){return '';}}).getAttribute('content');
 
     // File handling
-    var selectedFile = null;
+    var selectedFiles = [];
     var fileInput    = document.getElementById('fileInput');
     var uploadPreview= document.getElementById('uploadPreview');
+    var isSending    = false;
 
     if (fileInput) {
-        fileInput.addEventListener('change', function(){ selectedFile = this.files[0]||null; renderPreview(); });
+        fileInput.addEventListener('change', function(){ selectedFiles = Array.from(this.files || []); renderPreview(); });
     }
 
     function escHtml(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
     function renderPreview() {
         if (!uploadPreview) return;
-        if (!selectedFile) { uploadPreview.style.display='none'; uploadPreview.innerHTML=''; return; }
+        if (!selectedFiles.length) { uploadPreview.style.display='none'; uploadPreview.innerHTML=''; return; }
         uploadPreview.style.display = 'flex';
-        var item = document.createElement('div');
-        item.className = 'msg-upload-item';
-        if (selectedFile.type.startsWith('image/')) {
-            var reader = new FileReader();
-            reader.onload = function(e){
-                item.innerHTML = '<img src="'+e.target.result+'"><button class="rm" onclick="clearFile()"><i class="fas fa-times"></i></button>';
-            };
-            reader.readAsDataURL(selectedFile);
-        } else {
-            item.innerHTML = '<div class="file-chip"><i class="fas fa-file"></i>'+escHtml(selectedFile.name)+'</div><button class="rm" onclick="clearFile()"><i class="fas fa-times"></i></button>';
-        }
         uploadPreview.innerHTML = '';
-        uploadPreview.appendChild(item);
+
+        selectedFiles.forEach(function(file, index) {
+            var item = document.createElement('div');
+            item.className = 'msg-upload-item';
+
+            if (file.type.startsWith('image/')) {
+                var reader = new FileReader();
+                reader.onload = function(e){
+                    item.innerHTML = '<img src="'+e.target.result+'"><button type="button" class="rm" onclick="removeSelectedFile('+index+')"><i class="fas fa-times"></i></button>';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                item.innerHTML = '<div class="file-chip"><i class="fas fa-file"></i>'+escHtml(file.name)+'</div><button type="button" class="rm" onclick="removeSelectedFile('+index+')"><i class="fas fa-times"></i></button>';
+            }
+
+            uploadPreview.appendChild(item);
+        });
     }
 
-    window.clearFile = function(){ selectedFile=null; if(fileInput) fileInput.value=''; renderPreview(); };
+    window.clearFile = function(){ selectedFiles=[]; if(fileInput) fileInput.value=''; renderPreview(); };
+    window.removeSelectedFile = function(index){
+        selectedFiles = selectedFiles.filter(function(_, i){ return i !== index; });
+        renderPreview();
+    };
 
-    function appendBubble(body, time, mine, attachUrl, attachName, attachType) {
+    function appendBubbleMessage(message, mine) {
         if (!bubbles) return;
         var empty = bubbles.querySelector('.msg-chat-empty');
         if (empty) empty.remove();
 
-        var wrap = document.createElement('div');
-        wrap.className = 'msg-bubble-wrap ' + (mine ? 'mine' : 'theirs');
-        var inner = document.createElement('div');
-        inner.className = 'msg-bubble ' + (mine ? 'mine' : 'theirs');
+        var wrap = null;
+        if (message.batch_uuid) {
+            wrap = bubbles.querySelector('.msg-bubble-wrap[data-batch-id="' + message.batch_uuid + '"][data-mine="' + (mine ? 1 : 0) + '"]');
+        }
 
-        if (body) {
+        var inner;
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.className = 'msg-bubble-wrap ' + (mine ? 'mine' : 'theirs');
+            wrap.setAttribute('data-batch-id', message.batch_uuid || '');
+            wrap.setAttribute('data-mine', mine ? '1' : '0');
+
+            inner = document.createElement('div');
+            inner.className = 'msg-bubble ' + (mine ? 'mine' : 'theirs');
+            wrap.appendChild(inner);
+            bubbles.appendChild(wrap);
+        } else {
+            inner = wrap.querySelector('.msg-bubble');
+        }
+
+        if (message.body && !inner.querySelector('.msg-bubble-text')) {
             var txt = document.createElement('div');
             txt.className = 'msg-bubble-text';
-            txt.textContent = body;
+            txt.textContent = message.body;
             inner.appendChild(txt);
         }
-        if (attachUrl) {
-            if (attachType === 'image') {
-                var img = document.createElement('img');
-                img.src = attachUrl; img.className = 'msg-bubble-img';
-                img.onclick = function(){ openLightbox(this.src); };
-                inner.appendChild(img);
+
+        if (message.attachment_path) {
+            if (message.attachment_type === 'image') {
+                var groupedAlbum = message.batch_uuid ? inner.querySelector('.msg-bubble-album') : null;
+                if (message.batch_uuid) {
+                    if (!groupedAlbum) {
+                        groupedAlbum = document.createElement('div');
+                        groupedAlbum.className = 'msg-bubble-album';
+                        groupedAlbum.setAttribute('data-photo-count', '0');
+                        groupedAlbum.style.cssText = 'width:240px;max-width:100%;';
+                        groupedAlbum.innerHTML = '<div class="msg-bubble-album-stack" style="position:relative;width:200px;max-width:100%;height:150px;"><span class="msg-bubble-album-layer layer-1" aria-hidden="true"></span><span class="msg-bubble-album-layer layer-2" aria-hidden="true"></span><span class="msg-bubble-album-layer layer-3" aria-hidden="true"></span><img class="msg-bubble-album-cover" style="width:100%;height:100%;object-fit:cover;" alt="Attachment"></div><div class="msg-bubble-album-meta">0 photos</div><div class="msg-bubble-album-thumbs"></div>';
+                        inner.appendChild(groupedAlbum);
+                    }
+
+                    var stack = groupedAlbum.querySelector('.msg-bubble-album-stack');
+                    var cover = groupedAlbum.querySelector('.msg-bubble-album-cover');
+                    var meta = groupedAlbum.querySelector('.msg-bubble-album-meta');
+                    var thumbs = groupedAlbum.querySelector('.msg-bubble-album-thumbs');
+                    var count = parseInt(groupedAlbum.getAttribute('data-photo-count') || '0', 10) + 1;
+
+                    if (!stack.dataset.firstImage) {
+                        stack.dataset.firstImage = message.attachment_path;
+                        stack.onclick = function(){ openLightboxFromElement(this); };
+                    }
+
+                    if (!cover.getAttribute('src')) {
+                        cover.src = message.attachment_path;
+                        cover.alt = message.attachment_name || 'Attachment';
+                    }
+
+                    var thumb = document.createElement('img');
+                    thumb.src = message.attachment_path;
+                    thumb.alt = message.attachment_name || 'Attachment';
+                    thumbs.appendChild(thumb);
+
+                    groupedAlbum.setAttribute('data-photo-count', String(count));
+                    meta.textContent = count + ' photo' + (count === 1 ? '' : 's');
+                } else {
+                    var img = document.createElement('img');
+                    img.src = message.attachment_path; img.className = 'msg-bubble-img';
+                    img.style.cssText = 'display:block;width:auto;max-width:220px;max-height:260px;height:auto;object-fit:contain;';
+                    img.alt = message.attachment_name || 'Attachment';
+                    img.onclick = function(){ openLightboxFromElement(this); };
+                    inner.appendChild(img);
+                }
             } else {
+                var files = inner.querySelector('.msg-bubble-files');
+                if (!files) {
+                    files = document.createElement('div');
+                    files.className = 'msg-bubble-files';
+                    inner.appendChild(files);
+                }
                 var a = document.createElement('a');
-                a.href = attachUrl; a.className = 'msg-bubble-file';
-                a.target = '_blank'; a.download = attachName||'';
-                a.innerHTML = '<i class="fas fa-file-alt"></i> '+escHtml(attachName||'File');
-                inner.appendChild(a);
+                a.href = message.attachment_path; a.className = 'msg-bubble-file';
+                a.target = '_blank'; a.download = message.attachment_name||'';
+                a.innerHTML = '<i class="fas fa-file-alt"></i> '+escHtml(message.attachment_name||'File');
+                files.appendChild(a);
             }
         }
-        var t = document.createElement('div');
-        t.className = 'msg-bubble-time'; t.textContent = time;
-        inner.appendChild(t);
-        wrap.appendChild(inner);
-        bubbles.appendChild(wrap);
+
+        var hasText = !!inner.querySelector('.msg-bubble-text');
+        var hasFiles = !!inner.querySelector('.msg-bubble-files');
+        var hasImages = !!inner.querySelector('.msg-bubble-album, .msg-bubble-img');
+        inner.classList.toggle('msg-bubble-media-only', hasImages && !hasText && !hasFiles);
+
+        var t = inner.querySelector('.msg-bubble-time');
+        if (!t) {
+            t = document.createElement('div');
+            t.className = 'msg-bubble-time';
+            inner.appendChild(t);
+        }
+        t.textContent = message.time;
         bubbles.scrollTop = bubbles.scrollHeight;
     }
 
     function doSend() {
+        if (isSending) return;
         var body = msgInput ? msgInput.value.trim() : '';
-        if (!body && !selectedFile) return;
-        var time = new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+        if (!body && !selectedFiles.length) return;
+        isSending = true;
+        if (sendBtn) sendBtn.disabled = true;
         var fd = new FormData();
         fd.append('conversation_id', convId);
         fd.append('body', body);
-        if (selectedFile) fd.append('attachment', selectedFile);
-
-        appendBubble(body, time, true,
-            selectedFile ? (selectedFile.type.startsWith('image/') ? URL.createObjectURL(selectedFile) : '#') : null,
-            selectedFile ? selectedFile.name : null,
-            selectedFile ? (selectedFile.type.startsWith('image/') ? 'image' : 'file') : null
-        );
-        if (msgInput) msgInput.value = '';
-        clearFile();
+        selectedFiles.forEach(function(file){ fd.append('attachments[]', file); });
 
         fetch('{{ route("messages.send") }}', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             body: fd,
-        }).catch(function(){});
+        })
+        .then(function(r){
+            if (!r.ok) throw new Error('Server error');
+            return r.json();
+        })
+        .then(function(data){
+            var messages = Array.isArray(data.messages) ? data.messages : [];
+            messages.forEach(function(message){
+                appendBubbleMessage(message, true);
+            });
+            if (msgInput) msgInput.value = '';
+            clearFile();
+        })
+        .catch(function(){
+            window.alert('Message failed to send. Please try again.');
+        })
+        .finally(function(){
+            isSending = false;
+            if (sendBtn) sendBtn.disabled = false;
+        });
     }
 
     if (sendBtn) sendBtn.addEventListener('click', doSend);
@@ -301,25 +548,29 @@
             if (!window.Echo) return;
             var dot  = document.getElementById('presenceDot');
             var text = document.getElementById('presenceText');
+            var initialPresenceStatus = @json($status ?? 'offline');
             function setOnline(on) {
                 if (!dot||!text) return;
+                if (initialPresenceStatus === 'busy') return;
                 dot.style.color = on ? '#22c55e' : '#d1d5db';
-                text.textContent = on ? 'Available' : 'Offline';
+                text.textContent = on ? 'Active' : 'Offline';
             }
             window.Echo.private('conversation.'+convId).listen('.MessageSent', function(e){
                 if (e.sender_id !== currentUserId)
-                    appendBubble(e.body, e.time, false, e.attachment_path, e.attachment_name, e.attachment_type);
+                    appendBubbleMessage(e, false);
             });
             if (convId) {
                 window.Echo.join('presence-conversation.' + convId)
                     .here(function(users){
-                        setOnline(users.some(function(user){ return user.id !== currentUserId; }));
+                        if (users.some(function(user){ return user.id !== currentUserId; })) {
+                            setOnline(true);
+                        }
                     })
                     .joining(function(user){
                         if (user.id !== currentUserId) setOnline(true);
                     })
                     .leaving(function(user){
-                        if (user.id !== currentUserId) setOnline(false);
+                        if (user.id !== currentUserId && initialPresenceStatus === 'offline') setOnline(false);
                     });
             }
         }, 1000);

@@ -49,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/consultations', [ClientConsultationController::class, 'book']);
         Route::post('/consultations/{id}/cancel', [ClientConsultationController::class, 'cancel']);
         Route::get('/payments', [ClientPaymentController::class, 'index']);
+        Route::post('/payments/{id}/resume', [ClientPaymentController::class, 'resume']);
+        Route::get('/payments/{id}/status', [ClientPaymentController::class, 'status']);
         Route::get('/messages', [ClientMessageController::class, 'index']);
         Route::get('/messages/{conversationId}', [ClientMessageController::class, 'show']);
         Route::post('/messages/start', [ClientMessageController::class, 'start']);
@@ -85,12 +87,15 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Law Firm routes
-    Route::prefix('lawfirm')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('lawfirm')->group(function () {
         Route::get('/dashboard', [LawFirmDashboardController::class, 'index']);
         Route::get('/team', [LawFirmTeamController::class, 'index']);
         Route::get('/consultations', [LawFirmConsultationController::class, 'index']);
         Route::get('/earnings', [LawFirmEarningsController::class, 'index']);
         Route::get('/messages', [LawFirmMessageController::class, 'index']);
+        Route::get('/messages/{conversationId}', [LawFirmMessageController::class, 'show']);
+        Route::post('/messages/start', [LawFirmMessageController::class, 'start']);
+        Route::post('/messages/send', [LawFirmMessageController::class, 'send']);
         Route::get('/profile', [LawFirmProfileController::class, 'show']);
     });
 });

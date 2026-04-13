@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Consultation;
 use App\Models\Payment;
-use App\Models\User;
+use App\Services\ConsultationPaymentService;
 use Illuminate\Support\Facades\Auth;
 
 class VideoCallController extends Controller
@@ -25,9 +25,8 @@ class VideoCallController extends Controller
             return redirect()->back()->with('error', 'The video call is only available for confirmed upcoming consultations.');
         }
 
-        $scheduledAt = \Carbon\Carbon::parse($consultation->scheduled_at);
-        if (now()->lt($scheduledAt->copy()->subMinutes(5))) {
-            return redirect()->back()->with('error', 'The video call will be available 5 minutes before the scheduled time (' . $scheduledAt->format('M d, g:i A') . ').');
+        if (! $consultation->canJoinVideoCall()) {
+            return redirect()->back()->with('error', 'The video call will be available at ' . $consultation->videoJoinOpensAt()->format('M d, g:i A') . ', 5 minutes before the scheduled time.');
         }
 
         $roomName    = 'LexConnect-' . $consultation->code;
@@ -37,7 +36,7 @@ class VideoCallController extends Controller
         return view('video-call', compact('consultation', 'roomName', 'displayName', 'returnRoute'));
     }
 
-    public function end(Consultation $consultation)
+    public function end(Consultation $consultation, ConsultationPaymentService $paymentService)
     {
         $user = Auth::user();
 
@@ -48,26 +47,16 @@ class VideoCallController extends Controller
         if ($consultation->status === 'upcoming') {
             $consultation->update(['status' => 'completed']);
 
-            $lawyer = User::with('lawyerProfile')->find($user->id);
-            $inFirm = $lawyer->lawyerProfile && $lawyer->lawyerProfile->law_firm_id;
-
             $balance = Payment::where('consultation_id', $consultation->id)
                 ->where('type', 'balance')
                 ->where('status', 'pending')
                 ->first();
 
             if ($balance) {
-                $firmCut   = $inFirm ? round($balance->amount * 0.05, 2) : 0;
-                $lawyerNet = round($balance->amount - $firmCut, 2);
-
-                $balance->update([
-                    'status'     => 'paid',
-                    'firm_cut'   => $firmCut,
-                    'lawyer_net' => $lawyerNet,
-                ]);
+                $paymentService->createBalanceCheckout($balance->loadMissing(['consultation', 'client', 'lawyer']));
             }
         }
 
-        return redirect()->route('lawyer.consultations')->with('success', 'Session ended and marked as completed.');
+        return redirect()->route('lawyer.consultations')->with('success', 'Session ended and the final balance request has been prepared for the client.');
     }
 }

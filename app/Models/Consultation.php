@@ -23,6 +23,18 @@ class Consultation extends Model
         };
     }
 
+    public function videoJoinOpensAt(): \Carbon\Carbon
+    {
+        return \Carbon\Carbon::parse($this->scheduled_at)->copy()->subMinutes(5)->startOfMinute();
+    }
+
+    public function canJoinVideoCall(?\Carbon\Carbon $at = null): bool
+    {
+        return $this->type === 'video'
+            && $this->status === 'upcoming'
+            && ($at ?? now())->gte($this->videoJoinOpensAt());
+    }
+
     public function client() {
         return $this->belongsTo(User::class, 'client_id');
     }
@@ -32,7 +44,22 @@ class Consultation extends Model
     }
 
     public function payment() {
-        return $this->hasOne(Payment::class);
+        return $this->hasOne(Payment::class)->where('type', 'downpayment');
+    }
+
+    public function downpaymentPayment()
+    {
+        return $this->hasOne(Payment::class)->where('type', 'downpayment');
+    }
+
+    public function balancePayment()
+    {
+        return $this->hasOne(Payment::class)->where('type', 'balance');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
     }
 
     public function review() {

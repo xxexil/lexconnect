@@ -19,7 +19,9 @@ class LawFirmDashboardController extends Controller
         $lawyerIds = LawyerProfile::where('law_firm_id', $firm->id)->pluck('user_id');
 
         $teamCount           = $lawyerIds->count();
-        $activeCount         = LawyerProfile::where('law_firm_id', $firm->id)->where('availability_status', 'available')->count();
+        $activeCount         = LawyerProfile::where('law_firm_id', $firm->id)->get()
+            ->filter(fn (LawyerProfile $profile) => $profile->currentStatus() === 'active')
+            ->count();
         $pendingApplications = FirmApplication::where('law_firm_id', $firm->id)->where('status', 'pending')->count();
         $totalConsultations  = Consultation::whereIn('lawyer_id', $lawyerIds)->count();
         $totalEarned         = Payment::whereIn('lawyer_id', $lawyerIds)->where('status', 'paid')->sum('amount');

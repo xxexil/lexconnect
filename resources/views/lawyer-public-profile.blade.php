@@ -299,6 +299,10 @@
     <i class="fas fa-arrow-left"></i> Back to Find Lawyers
 </a>
 
+@php
+    $profileStatus = $profile->currentStatus();
+@endphp
+
 <div class="lpp-card">
 
     {{-- Hero banner --}}
@@ -321,7 +325,7 @@
                 @endif
                 <span class="lpp-badge lpp-badge-avail">
                     <i class="fas fa-circle" style="font-size:.5rem;"></i>
-                    {{ $profile->availability_status === 'available' ? 'Available' : 'Unavailable' }}
+                    {{ ucfirst($profileStatus) }}
                 </span>
                 @if($profile->firm)
                 <span class="lpp-badge lpp-badge-firm">
@@ -471,7 +475,7 @@
 
         {{-- Actions --}}
         <div class="lpp-actions">
-            @if($profile->availability_status === 'available')
+            @if($profileStatus === 'active')
             <a class="lpp-btn-primary" href="{{ route('consultations.create', ['lawyer' => $profile->user_id, 'return_to' => url()->full()]) }}">
                 <i class="fas fa-calendar-check"></i> Book Consultation
             </a>
@@ -525,7 +529,6 @@
                     <i class="fas fa-calendar-alt" style="color:#b5860d;"></i> Preferred Date & Time *
                 </label>
                 <input type="datetime-local" name="scheduled_at" required
-                    min="{{ now()->addHour()->format('Y-m-d\TH:i') }}"
                     value="{{ old('scheduled_at') }}"
                     style="width:100%;padding:11px 14px;border:1.5px solid #dee2e6;border-radius:8px;font-size:.93rem;font-family:inherit;box-sizing:border-box;">
             </div>

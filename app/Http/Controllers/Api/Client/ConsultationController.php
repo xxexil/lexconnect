@@ -5,11 +5,17 @@ namespace App\Http\Controllers\Api\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Consultation;
 use App\Models\Payment;
+use App\Services\ConsultationPaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ConsultationController extends Controller
 {
+    public function __construct(private ConsultationPaymentService $paymentService)
+    {
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -42,7 +48,7 @@ class ConsultationController extends Controller
     {
         $request->validate([
             'lawyer_id'        => 'required|exists:users,id',
-            'scheduled_at'     => 'required|date|after:now',
+            'scheduled_at'     => 'required|date',
             'duration_minutes' => 'required|integer|in:30,60,90,120',
             'type'             => 'required|in:video,phone,in-person',
             'notes'            => 'nullable|string|max:1000',
@@ -71,7 +77,7 @@ class ConsultationController extends Controller
         $downpayment = round($price * 0.5, 2);
         $balance = $price - $downpayment;
 
-        Payment::create([
+        $downpaymentPayment = Payment::create([
             'client_id'       => $user->id,
             'lawyer_id'       => $request->lawyer_id,
             'consultation_id' => $consultation->id,
@@ -93,11 +99,33 @@ class ConsultationController extends Controller
             'lawyer_net'      => $balance,
         ]);
 
+        try {
+            $downpaymentPayment = $this->paymentService->createDownpaymentCheckout(
+                $downpaymentPayment->loadMissing(['consultation', 'lawyer', 'client']),
+                context: 'mobile'
+            );
+        } catch (\RuntimeException $e) {
+            Log::warning('API consultation checkout session failed', [
+                'consultation_id' => $consultation->id,
+                'payment_id' => $downpaymentPayment->id,
+                'client_id' => $user->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'message'      => 'Consultation booked successfully.',
             'consultation' => $consultation,
             'price'        => $price,
             'downpayment'  => $downpayment,
+            'payment'      => [
+                'id' => $downpaymentPayment->id,
+                'type' => $downpaymentPayment->type,
+                'status' => $downpaymentPayment->status,
+                'amount' => $downpaymentPayment->amount,
+                'checkout_url' => $downpaymentPayment->paymongo_checkout_url,
+                'has_checkout_session' => filled($downpaymentPayment->paymongo_session_id),
+            ],
         ], 201);
     }
 

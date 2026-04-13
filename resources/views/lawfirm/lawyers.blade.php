@@ -29,34 +29,36 @@
 <div id="tab-team" class="lf-tab-content">
     @forelse($teamMembers as $member)
     <div class="lp-consult-card" style="border-left-color:#1a3d2b;">
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-            <div class="lp-req-avatar" style="background:#1a3d2b;width:52px;height:52px;line-height:52px;font-size:1.2rem;">
-                {{ strtoupper(substr($member->user->name, 0, 1)) }}
-            </div>
-            <div style="flex:1;min-width:200px;">
-                <div style="font-weight:700;font-size:1rem;color:#1e2d4d;">{{ $member->user->name }}</div>
-                <div style="font-size:.85rem;color:#6c757d;margin-top:3px;">
-                    <span><i class="fas fa-gavel" style="color:#b5860d;"></i> {{ $member->specialty }}</span>
-                    &nbsp;&bull;&nbsp;
-                    <span><i class="fas fa-briefcase"></i> {{ $member->experience_years }} yrs experience</span>
-                    @if($member->location)
-                    &nbsp;&bull;&nbsp;
-                    <span><i class="fas fa-map-marker-alt"></i> {{ $member->location }}</span>
-                    @endif
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:24px;row-gap:16px;width:100%;">
+            <div style="display:flex;align-items:center;gap:16px;min-width:0;">
+                <div class="lp-req-avatar" style="background:#1a3d2b;width:52px;height:52px;line-height:52px;font-size:1.2rem;flex-shrink:0;">
+                    {{ strtoupper(substr($member->user->name, 0, 1)) }}
                 </div>
-                <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">
-                    <span class="lp-status-badge {{ $member->availability_status }}">{{ ucfirst($member->availability_status) }}</span>
-                    @if($member->is_certified)<span class="lp-pay-badge paid"><i class="fas fa-certificate"></i> Certified</span>@endif
-                    <span style="font-size:.82rem;color:#6c757d;"><i class="fas fa-peso-sign"></i> ₱{{ number_format($member->hourly_rate, 0) }}/hr</span>
+                <div style="flex:1;min-width:260px;">
+                    <div style="font-weight:700;font-size:1rem;color:#1e2d4d;">{{ $member->user->name }}</div>
+                    <div style="font-size:.85rem;color:#6c757d;margin-top:3px;">
+                        <span><i class="fas fa-gavel" style="color:#b5860d;"></i> {{ $member->specialty }}</span>
+                        &nbsp;&bull;&nbsp;
+                        <span><i class="fas fa-briefcase"></i> {{ $member->experience_years }} yrs experience</span>
+                        @if($member->location)
+                        &nbsp;&bull;&nbsp;
+                        <span><i class="fas fa-map-marker-alt"></i> {{ $member->location }}</span>
+                        @endif
+                    </div>
+                    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <span class="lp-status-badge {{ $member->currentStatusClass() }}">{{ $member->currentStatusLabel() }}</span>
+                        @if($member->is_certified)<span class="lp-pay-badge paid"><i class="fas fa-certificate"></i> Certified</span>@endif
+                        <span style="font-size:.82rem;color:#6c757d;"><i class="fas fa-peso-sign"></i> ₱{{ number_format($member->hourly_rate, 0) }}/hr</span>
+                    </div>
                 </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;justify-content:center;min-width:240px;text-align:right;justify-self:end;">
                 <div style="font-size:.82rem;color:#6c757d;text-align:right;">
                     <i class="fas fa-star" style="color:#b5860d;"></i> {{ number_format($member->rating, 1) }}
                     ({{ $member->reviews_count }} reviews)
                 </div>
-                <div style="display:flex;gap:6px;">
-                    <form method="POST" action="{{ route('lawfirm.messages.start') }}">
+                <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;width:100%;">
+                    <form method="POST" action="{{ route('lawfirm.messages.start') }}" style="margin:0;">
                         @csrf
                         <input type="hidden" name="lawyer_id" value="{{ $member->user_id }}">
                         <button type="submit" class="lp-btn-review" style="font-size:.8rem;padding:5px 12px;">
@@ -64,7 +66,7 @@
                         </button>
                     </form>
                     <form method="POST" action="{{ route('lawfirm.lawyers.remove', $member->user_id) }}"
-                        onsubmit="return confirm('Remove {{ addslashes($member->user->name) }} from your firm?')">
+                        onsubmit="return confirm('Remove {{ addslashes($member->user->name) }} from your firm?')" style="margin:0;">
                         @csrf
                         <button type="submit" class="lp-btn-decline" style="font-size:.8rem;padding:5px 12px;">
                             <i class="fas fa-user-minus"></i> Remove
@@ -149,11 +151,11 @@
         <div class="lf-review-modal">
             {{-- Header --}}
             <div class="lf-rm-header">
-                <div style="display:flex;align-items:center;gap:14px;">
-                    <div class="lp-req-avatar" style="width:56px;height:56px;line-height:56px;font-size:1.4rem;flex-shrink:0;">
+                <div class="lf-rm-head-main">
+                    <div class="lp-req-avatar lf-rm-avatar">
                         {{ strtoupper(substr($app->lawyer->name, 0, 1)) }}
                     </div>
-                    <div>
+                    <div class="lf-rm-head-copy">
                         <div class="lf-rm-name">{{ $app->lawyer->name }}</div>
                         <div class="lf-rm-sub">{{ $app->lawyer->email }}</div>
                         @if($app->lawyer->phone)
@@ -195,7 +197,7 @@
                     <div class="lf-rm-field">
                         <span class="lf-rm-label">Availability</span>
                         <span class="lf-rm-value">
-                            <span class="lp-status-badge {{ $lp->availability_status }}">{{ ucfirst($lp->availability_status) }}</span>
+                            <span class="lp-status-badge {{ $lp->currentStatusClass() }}">{{ $lp->currentStatusLabel() }}</span>
                         </span>
                     </div>
                     <div class="lf-rm-field">
@@ -217,7 +219,7 @@
                 </div>
 
                 {{-- Verification Documents --}}
-                <div class="lf-rm-section-title" style="margin-top:22px;"><i class="fas fa-file-alt"></i> Submitted Verification Documents</div>
+                <div class="lf-rm-section-title lf-rm-section-gap"><i class="fas fa-file-alt"></i> Submitted Verification Documents</div>
                 <div class="lf-rm-docs-grid">
                     {{-- Government ID --}}
                     <div class="lf-rm-doc-card">
@@ -269,7 +271,7 @@
 
                 {{-- Application message --}}
                 @if($app->message && $app->message !== 'Applied during registration.')
-                <div class="lf-rm-section-title" style="margin-top:22px;"><i class="fas fa-comment-alt"></i> Applicant's Message</div>
+                <div class="lf-rm-section-title lf-rm-section-gap"><i class="fas fa-comment-alt"></i> Applicant's Message</div>
                 <div class="lf-rm-message">"{{ $app->message }}"</div>
                 @endif
 
@@ -311,35 +313,48 @@
 .app-btn-reject { background:#fff; color:#dc3545; border:1.5px solid #dc3545; }
 .app-btn-reject:hover { background:#dc3545; color:#fff; }
 /* Review modal overlay */
-.lf-review-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9000; display:flex; align-items:center; justify-content:center; padding:20px; }
-.lf-review-modal { background:#fff; border-radius:16px; max-width:700px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.25); display:flex; flex-direction:column; }
-.lf-rm-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:24px 28px 20px; border-bottom:1px solid #f0f0f0; background:#f7f9fc; border-radius:16px 16px 0 0; }
-.lf-rm-name { font-size:1.15rem; font-weight:700; color:#1e2d4d; }
-.lf-rm-sub { font-size:.83rem; color:#6c757d; margin-top:2px; }
-.lf-rm-close { background:none; border:none; font-size:1.6rem; line-height:1; cursor:pointer; color:#aaa; padding:0 4px; align-self:flex-start; }
-.lf-rm-close:hover { color:#1e2d4d; }
-.lf-rm-body { padding:24px 28px; }
-.lf-rm-status-bar { border-radius:8px; padding:10px 16px; font-size:.87rem; margin-bottom:20px; }
+.lf-review-overlay { position:fixed; inset:0; background:rgba(12,18,28,.48); backdrop-filter:blur(4px); z-index:9000; display:flex; align-items:center; justify-content:center; padding:28px; }
+.lf-review-modal { background:linear-gradient(180deg, #fcfdff 0%, #f8fafc 100%); border-radius:24px; max-width:820px; width:100%; max-height:90vh; overflow-y:auto; box-shadow:0 28px 80px rgba(15,23,42,.28); display:flex; flex-direction:column; border:1px solid rgba(226,232,240,.95); }
+.lf-rm-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:28px 30px 22px; border-bottom:1px solid #e8edf5; background:linear-gradient(180deg, #ffffff 0%, #f5f8fc 100%); border-radius:24px 24px 0 0; position:sticky; top:0; z-index:2; }
+.lf-rm-head-main { display:flex; align-items:center; gap:16px; min-width:0; }
+.lf-rm-avatar { width:64px; height:64px; line-height:64px; font-size:1.5rem; flex-shrink:0; background:linear-gradient(135deg, #22345c, #314b85); box-shadow:0 10px 24px rgba(30,45,77,.18); }
+.lf-rm-head-copy { min-width:0; }
+.lf-rm-name { font-size:1.35rem; font-weight:800; color:#1b2c4f; letter-spacing:-.02em; }
+.lf-rm-sub { font-size:.9rem; color:#64748b; margin-top:4px; }
+.lf-rm-close { width:38px; height:38px; background:#fff; border:1px solid #d9e1ee; border-radius:999px; font-size:1.4rem; line-height:1; cursor:pointer; color:#94a3b8; padding:0; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(15,23,42,.08); }
+.lf-rm-close:hover { color:#1e2d4d; border-color:#b9c7db; }
+.lf-rm-body { padding:26px 30px 30px; }
+.lf-rm-status-bar { border-radius:14px; padding:13px 16px; font-size:.92rem; margin-bottom:24px; display:flex; align-items:center; gap:10px; font-weight:600; }
 .lf-rm-status-pending { background:#fffbeb; color:#92400e; border:1px solid #fcd34d; }
 .lf-rm-status-accepted { background:#ecfdf5; color:#065f46; border:1px solid #6ee7b7; }
 .lf-rm-status-rejected { background:#fef2f2; color:#991b1b; border:1px solid #fca5a5; }
-.lf-rm-section-title { font-size:.78rem; font-weight:700; color:#b5860d; text-transform:uppercase; letter-spacing:.8px; padding-bottom:6px; border-bottom:1px solid #f0e6c8; margin-bottom:14px; display:flex; align-items:center; gap:7px; }
-.lf-rm-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 24px; }
+.lf-rm-section-title { font-size:.76rem; font-weight:800; color:#a16207; text-transform:uppercase; letter-spacing:.14em; padding-bottom:8px; border-bottom:1px solid #eadfbe; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.lf-rm-section-gap { margin-top:28px; }
+.lf-rm-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 .lf-rm-full { grid-column:1/-1; }
-.lf-rm-field { display:flex; flex-direction:column; gap:3px; }
-.lf-rm-label { font-size:.75rem; font-weight:600; color:#6c757d; text-transform:uppercase; letter-spacing:.4px; }
-.lf-rm-value { font-size:.9rem; color:#1e2d4d; }
-.lf-rm-docs-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.lf-rm-doc-card { border:1.5px solid #e9ecef; border-radius:10px; padding:14px; background:#fafafa; display:flex; flex-direction:column; gap:10px; align-items:center; }
-.lf-rm-doc-label { font-size:.8rem; font-weight:700; color:#1e2d4d; align-self:flex-start; display:flex; align-items:center; gap:6px; }
-.lf-rm-doc-img { width:100%; max-height:200px; object-fit:contain; border-radius:6px; border:1px solid #dee2e6; cursor:pointer; transition:transform .2s; }
-.lf-rm-doc-img:hover { transform:scale(1.02); }
-.lf-rm-doc-file { display:flex; flex-direction:column; align-items:center; gap:6px; text-decoration:none; color:#1e2d4d; font-size:.85rem; font-weight:600; padding:16px; border:2px dashed #dee2e6; border-radius:8px; width:100%; box-sizing:border-box; }
-.lf-rm-doc-file:hover { border-color:#b5860d; color:#b5860d; }
-.lf-rm-doc-missing { font-size:.83rem; color:#dc3545; display:flex; align-items:center; gap:6px; padding:12px 0; }
-.lf-rm-message { background:#f8f9fa; border-left:3px solid #b5860d; border-radius:0 6px 6px 0; padding:12px 16px; font-size:.88rem; color:#555; font-style:italic; margin-top:6px; }
-.lf-rm-actions { display:flex; gap:12px; margin-top:24px; padding-top:20px; border-top:1px solid #f0f0f0; }
-.lf-rm-action-btn { font-size:.9rem; padding:10px 22px; }
+.lf-rm-field { display:flex; flex-direction:column; gap:7px; padding:16px 18px; background:#fff; border:1px solid #e7edf5; border-radius:16px; box-shadow:0 10px 22px rgba(15,23,42,.04); }
+.lf-rm-label { font-size:.72rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:.08em; }
+.lf-rm-value { font-size:1rem; color:#16233f; line-height:1.5; }
+.lf-rm-docs-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.lf-rm-doc-card { border:1px solid #e7edf5; border-radius:18px; padding:16px; background:#fff; display:flex; flex-direction:column; gap:12px; align-items:center; box-shadow:0 10px 24px rgba(15,23,42,.04); min-height:210px; }
+.lf-rm-doc-label { font-size:.84rem; font-weight:800; color:#1e2d4d; align-self:flex-start; display:flex; align-items:center; gap:7px; }
+.lf-rm-doc-img { width:100%; max-height:220px; object-fit:contain; border-radius:12px; border:1px solid #dee6f0; background:#f8fafc; cursor:pointer; transition:transform .2s, box-shadow .2s; }
+.lf-rm-doc-img:hover { transform:translateY(-2px); box-shadow:0 12px 22px rgba(15,23,42,.08); }
+.lf-rm-doc-file { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-decoration:none; color:#1e2d4d; font-size:.9rem; font-weight:700; padding:18px; border:2px dashed #d7e0ec; border-radius:14px; width:100%; min-height:130px; box-sizing:border-box; background:#fbfcfe; }
+.lf-rm-doc-file:hover { border-color:#b5860d; color:#b5860d; background:#fffdf8; }
+.lf-rm-doc-missing { font-size:.9rem; color:#dc3545; display:flex; align-items:center; gap:8px; padding:18px 0; min-height:130px; }
+.lf-rm-message { background:#fffdf8; border:1px solid #f3e4b8; border-left:4px solid #b5860d; border-radius:14px; padding:15px 18px; font-size:.92rem; color:#5b6472; font-style:italic; margin-top:8px; line-height:1.65; }
+.lf-rm-actions { display:flex; gap:12px; margin-top:28px; padding-top:22px; border-top:1px solid #e8edf5; position:sticky; bottom:0; background:linear-gradient(180deg, rgba(248,250,252,0) 0%, #f8fafc 24%, #f8fafc 100%); padding-bottom:4px; }
+.lf-rm-action-btn { font-size:.95rem; padding:12px 24px; border-radius:12px; box-shadow:0 10px 18px rgba(15,23,42,.08); }
+@media (max-width: 760px) {
+    .lf-review-overlay { padding:14px; }
+    .lf-review-modal { max-height:94vh; border-radius:20px; }
+    .lf-rm-header, .lf-rm-body { padding-left:18px; padding-right:18px; }
+    .lf-rm-head-main { align-items:flex-start; }
+    .lf-rm-grid, .lf-rm-docs-grid { grid-template-columns:1fr; }
+    .lf-rm-actions { flex-direction:column; }
+    .lf-rm-action-btn { width:100%; justify-content:center; }
+}
 </style>
 @endpush
 @push('scripts')
@@ -368,3 +383,4 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 @endpush
+

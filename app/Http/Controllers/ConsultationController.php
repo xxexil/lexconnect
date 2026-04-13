@@ -21,7 +21,7 @@ class ConsultationController extends Controller
 
         Consultation::expireOverdue('client_id', $user->id);
 
-        $consultations = Consultation::with(['lawyer','lawyer.lawyerProfile','review','payment'])
+        $consultations = Consultation::with(['lawyer','lawyer.lawyerProfile','review','payment','payments','balancePayment'])
             ->where('client_id', $user->id)
             ->where(function($q) {
                 $q->where('status', 'pending')
@@ -58,10 +58,26 @@ class ConsultationController extends Controller
                 ->toIso8601String(),
         ]);
 
+        $blockedSchedule = $blockedDates
+            ->map(fn (LawyerBlockedDate $blockedDate) => $blockedDate->toScheduleArray())
+            ->values();
+
         $blockedDateStrings = $blockedDates
+            ->filter(fn (LawyerBlockedDate $blockedDate) => $blockedDate->isAllDay())
             ->pluck('blocked_date')
             ->map(fn ($date) => $date->format('Y-m-d'))
             ->values();
+
+        $blockedWindows = $blockedDates
+            ->filter(fn (LawyerBlockedDate $blockedDate) => !$blockedDate->isAllDay())
+            ->map(function (LawyerBlockedDate $blockedDate) {
+                $date = $blockedDate->blocked_date->format('Y-m-d');
+
+                return [
+                    'start' => Carbon::parse($date . ' ' . $blockedDate->start_time),
+                    'end' => Carbon::parse($date . ' ' . $blockedDate->end_time),
+                ];
+            });
 
         $quickSlots = [];
         $workHours = [9, 10, 11, 13, 14, 15, 16, 17];
@@ -87,11 +103,15 @@ class ConsultationController extends Controller
                     continue;
                 }
 
-                $isFree = !$bookedWindows->contains(function ($window) use ($slot) {
-                    return $slot->lt($window['end']) && $slot->copy()->addHour()->gt($window['start']);
+                $slotEnd = $slot->copy()->addHour();
+                $isBooked = $bookedWindows->contains(function ($window) use ($slot, $slotEnd) {
+                    return $slot->lt($window['end']) && $slotEnd->gt($window['start']);
+                });
+                $isBlocked = $blockedWindows->contains(function ($window) use ($slot, $slotEnd) {
+                    return $slot->lt($window['end']) && $slotEnd->gt($window['start']);
                 });
 
-                if ($isFree) {
+                if (!$isBooked && !$isBlocked) {
                     $quickSlots[] = $slot;
                 }
             }
@@ -104,6 +124,7 @@ class ConsultationController extends Controller
             'lawyer' => $lawyer,
             'profile' => $profile,
             'blockedDates' => $blockedDates,
+            'blockedSchedule' => $blockedSchedule,
             'blockedDateStrings' => $blockedDateStrings,
             'bookedSlots' => $bookedSlots,
             'quickSlots' => $quickSlots,
@@ -115,26 +136,39 @@ class ConsultationController extends Controller
     public function book(Request $request, PayMongoService $paymongo, FraudDetectionService $fraudDetection) {
         $request->validate([
             'lawyer_id'     => 'required|exists:users,id',
-            'scheduled_at'  => 'required|date|after:now',
+            'scheduled_at'  => 'required|date',
             'duration'      => 'required|integer|min:15',
             'type'          => 'required|in:video,phone,in-person',
             'case_document' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
-            'payment_method'=> 'nullable|in:gcash,paymaya,grab_pay,card,all',
+            'payment_method'=> 'nullable|in:gcash,paymaya,maya,grab_pay,card,all',
         ]);
 
         $lawyer = User::with('lawyerProfile')->findOrFail($request->lawyer_id);
 
-        // Check if the lawyer has blocked the requested date
-        $scheduledDate = \Carbon\Carbon::parse($request->scheduled_at)->toDateString();
-        $isBlocked = LawyerBlockedDate::where('lawyer_id', $request->lawyer_id)
-            ->where('blocked_date', $scheduledDate)
-            ->exists();
-        if ($isBlocked) {
-            return back()->with('error', 'This lawyer is unavailable on the selected date. Please choose a different date.');
-        }
-
         $scheduledAt = Carbon::parse($request->scheduled_at);
         $endsAt = $scheduledAt->copy()->addMinutes((int) $request->duration);
+        $scheduledDate = $scheduledAt->toDateString();
+
+        $blockedConflicts = LawyerBlockedDate::where('lawyer_id', $request->lawyer_id)
+            ->where('blocked_date', $scheduledDate)
+            ->get();
+
+        $isBlocked = $blockedConflicts->contains(function (LawyerBlockedDate $blockedDate) use ($scheduledAt, $endsAt, $scheduledDate) {
+            if ($blockedDate->isAllDay()) {
+                return true;
+            }
+
+            $blockedStart = Carbon::parse($scheduledDate . ' ' . $blockedDate->start_time);
+            $blockedEnd = Carbon::parse($scheduledDate . ' ' . $blockedDate->end_time);
+
+            return $scheduledAt->lt($blockedEnd) && $endsAt->gt($blockedStart);
+        });
+
+        if ($isBlocked) {
+            return back()
+                ->withInput()
+                ->with('error', 'This lawyer is unavailable during the selected time. Please choose a different schedule.');
+        }
 
         $hasConflict = Consultation::where('lawyer_id', $request->lawyer_id)
             ->whereIn('status', ['pending', 'upcoming'])
@@ -194,6 +228,18 @@ class ConsultationController extends Controller
         $downpayment = round($consultation->price * 0.50, 2);
         $balance     = round($consultation->price - $downpayment, 2);
 
+        // Calculate firm cut if lawyer belongs to a law firm
+        $lawyerProfile = $lawyer->lawyerProfile;
+        $firmCutPercentage = 0;
+        if ($lawyerProfile && $lawyerProfile->law_firm_id) {
+            $lawyerProfile->loadMissing('lawFirm');
+            $firmCutPercentage = (float) optional($lawyerProfile->lawFirm)->cut_percentage;
+        }
+        $downpaymentFirmCut = round($downpayment * ($firmCutPercentage / 100), 2);
+        $downpaymentLawyerNet = round($downpayment - $downpaymentFirmCut, 2);
+        $balanceFirmCut = round($balance * ($firmCutPercentage / 100), 2);
+        $balanceLawyerNet = round($balance - $balanceFirmCut, 2);
+
         // Downpayment record – starts as pending until PayMongo confirms
         $downpaymentPayment = Payment::create([
             'client_id'       => Auth::id(),
@@ -202,7 +248,8 @@ class ConsultationController extends Controller
             'amount'          => $downpayment,
             'status'          => 'pending',
             'type'            => 'downpayment',
-            'lawyer_net'      => $downpayment,
+            'firm_cut'        => $downpaymentFirmCut,
+            'lawyer_net'      => $downpaymentLawyerNet,
         ]);
 
         $fraudDetection->logAssessment(
@@ -231,6 +278,8 @@ class ConsultationController extends Controller
             'amount'          => $balance,
             'status'          => 'pending',
             'type'            => 'balance',
+            'firm_cut'        => $balanceFirmCut,
+            'lawyer_net'      => $balanceLawyerNet,
         ]);
 
         // Create PayMongo checkout session and redirect client to pay
@@ -259,6 +308,7 @@ class ConsultationController extends Controller
             $allMethods   = ['gcash', 'paymaya', 'card', 'grab_pay'];
             $methodMap    = [
                 'gcash'    => ['gcash'],
+                'maya'     => ['paymaya'],
                 'paymaya'  => ['paymaya'],
                 'grab_pay' => ['grab_pay'],
                 'card'     => ['card'],
@@ -281,10 +331,33 @@ class ConsultationController extends Controller
                 paymentMethodTypes: $paymentMethods,
             );
 
-            $downpaymentPayment->update(['paymongo_session_id' => $checkout['session_id']]);
+            $downpaymentPayment->update([
+                'paymongo_session_id' => $checkout['session_id'],
+                'paymongo_checkout_url' => $checkout['checkout_url'],
+            ]);
 
             return redirect($checkout['checkout_url']);
         } catch (\RuntimeException $e) {
+            Log::warning('Consultation checkout session failed', [
+                'consultation_id' => $consultation->id,
+                'payment_id' => $downpaymentPayment->id,
+                'selected_method' => $selectedMethod,
+                'message' => $e->getMessage(),
+            ]);
+
+            if (str_starts_with((string) $secretKey, 'sk_test_')) {
+                $downpaymentPayment->update([
+                    'status' => 'downpayment_paid',
+                    'paymongo_session_id' => null,
+                    'paymongo_checkout_url' => null,
+                ]);
+
+                $consultation->update(['status' => 'pending']);
+
+                return redirect()->route('consultations')
+                    ->with('success', 'Consultation booked in sandbox mode because the PayMongo test checkout is currently unavailable.');
+            }
+
             // Roll back the created records if PayMongo fails
             Payment::where('consultation_id', $consultation->id)->delete();
             $consultation->delete();

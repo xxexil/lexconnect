@@ -54,6 +54,7 @@ class MessageSent implements ShouldBroadcastNow
                 'attachment_path' => $this->message->attachment_path ? asset('storage/' . $this->message->attachment_path) : null,
                 'attachment_name' => $this->message->attachment_name,
                 'attachment_type' => $this->message->attachment_type,
+                'batch_uuid'      => $this->message->batch_uuid,
             ];
             
             \Log::info('MessageSent data prepared: ' . json_encode($data));

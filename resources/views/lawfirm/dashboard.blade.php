@@ -101,7 +101,7 @@
                 </div>
             </div>
             <div>
-                <span class="lp-status-badge {{ $member->availability_status }}">{{ ucfirst($member->availability_status) }}</span>
+                <span class="lp-status-badge {{ $member->currentStatusClass() }}">{{ $member->currentStatusLabel() }}</span>
             </div>
         </div>
         @empty

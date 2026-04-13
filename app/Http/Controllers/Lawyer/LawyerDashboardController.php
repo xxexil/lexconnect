@@ -20,16 +20,6 @@ class LawyerDashboardController extends Controller
         // Auto-expire past upcoming consultations
         Consultation::expireOverdue('lawyer_id', $user->id);
 
-        // If lawyer has an ongoing consultation, set status to busy, else available
-        $hasOngoing = Consultation::where('lawyer_id', $user->id)
-            ->where('status', 'upcoming')
-            ->where('scheduled_at', '<=', now())
-            ->whereRaw('DATE_ADD(scheduled_at, INTERVAL duration_minutes MINUTE) > ?', [now()])
-            ->exists();
-        if ($profile) {
-            $profile->update(['availability_status' => $hasOngoing ? 'busy' : 'available']);
-        }
-
         $pendingConsultations = Consultation::with('client')
             ->where('lawyer_id', $user->id)
             ->where('status', 'pending')
