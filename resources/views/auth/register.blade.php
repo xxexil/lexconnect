@@ -27,6 +27,11 @@
         .section-divider { font-size: .8rem; font-weight: 700; color: #b5860d; text-transform: uppercase; letter-spacing: 1px; margin: 8px 0 18px; padding-bottom: 8px; border-bottom: 1px solid #f0e6c8; }
         .btn-primary-auth { width: 100%; padding: 13px; background: #1e2d4d; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; letter-spacing: .5px; transition: background .2s; }
         .btn-primary-auth:hover { background: #162240; }
+        /* Hide browser native password reveal icon */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear,
+        input::-webkit-credentials-auto-fill-button { display: none !important; }
+        input[type="password"] { -webkit-appearance: none; }
         .auth-footer { text-align: center; margin-top: 24px; font-size: .88rem; color: #6c757d; }
         .auth-footer a { color: #b5860d; font-weight: 600; text-decoration: none; }
         #lawyerFields { display: none; }
@@ -126,12 +131,22 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" name="password" placeholder="Min. 6 characters" required>
+                    <div style="position:relative;">
+                        <input type="password" name="password" id="regPassword" placeholder="Min. 6 characters" required style="padding-right:42px;">
+                        <button type="button" onclick="togglePwd('regPassword','regEye')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#adb5bd;padding:0;font-size:.95rem;">
+                            <i class="fas fa-eye" id="regEye"></i>
+                        </button>
+                    </div>
                     @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="form-group">
                     <label>Confirm Password</label>
-                    <input type="password" name="password_confirmation" placeholder="Repeat password" required>
+                    <div style="position:relative;">
+                        <input type="password" name="password_confirmation" id="regPasswordConfirm" placeholder="Repeat password" required style="padding-right:42px;">
+                        <button type="button" onclick="togglePwd('regPasswordConfirm','regEyeConfirm')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#adb5bd;padding:0;font-size:.95rem;">
+                            <i class="fas fa-eye" id="regEyeConfirm"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -555,6 +570,20 @@
                 if (fv) fv.value = oldFirm;
             }
         })();
+    </script>
+    <script>
+    function togglePwd(inputId, iconId) {
+        var input = document.getElementById(inputId);
+        var icon  = document.getElementById(iconId);
+        if (!input || !icon) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
     </script>
 </body>
 </html>

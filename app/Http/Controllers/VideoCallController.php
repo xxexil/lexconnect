@@ -59,4 +59,28 @@ class VideoCallController extends Controller
 
         return redirect()->route('lawyer.consultations')->with('success', 'Session ended and the final balance request has been prepared for the client.');
     }
+
+    public function status(Consultation $consultation)
+    {
+        $user = Auth::user();
+
+        if ($consultation->client_id !== $user->id && $consultation->lawyer_id !== $user->id) {
+            abort(403, 'You are not part of this consultation.');
+        }
+
+        $balance = $consultation->balancePayment()->first();
+        $balanceUrl = null;
+
+        if ($user->id === $consultation->client_id && $balance && $balance->status === 'pending') {
+            $balanceUrl = route('payment.balance.start', $balance);
+        }
+
+        return response()->json([
+            'consultation_id' => $consultation->id,
+            'status' => $consultation->status,
+            'balance_payment_id' => $balance?->id,
+            'balance_status' => $balance?->status,
+            'balance_checkout_url' => $balanceUrl,
+        ]);
+    }
 }

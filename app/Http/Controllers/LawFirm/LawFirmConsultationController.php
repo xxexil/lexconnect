@@ -17,15 +17,31 @@ class LawFirmConsultationController extends Controller
         $pending   = Consultation::with(['client', 'lawyer', 'payment'])
             ->whereIn('lawyer_id', $lawyerIds)
             ->where('status', 'pending')
-            ->whereHas('payment', function ($q) {
-                $q->where('status', 'downpayment_paid');
-            })
-            ->latest()
-            ->get();
-        $upcoming  = Consultation::with(['client', 'lawyer'])->whereIn('lawyer_id', $lawyerIds)->where('status', 'upcoming')->orderBy('scheduled_at')->get();
-        $completed = Consultation::with(['client', 'lawyer'])->whereIn('lawyer_id', $lawyerIds)->where('status', 'completed')->latest()->get();
-        $cancelled = Consultation::with(['client', 'lawyer'])->whereIn('lawyer_id', $lawyerIds)->where('status', 'cancelled')->latest()->get();
+            ->whereHas('payment', fn($q) => $q->where('status', 'downpayment_paid'))
+            ->latest()->get();
 
-        return view('lawfirm.consultations', compact('firm', 'pending', 'upcoming', 'completed', 'cancelled'));
+        $upcoming  = Consultation::with(['client', 'lawyer'])
+            ->whereIn('lawyer_id', $lawyerIds)
+            ->where('status', 'upcoming')
+            ->orderBy('scheduled_at')->get();
+
+        $completed = Consultation::with(['client', 'lawyer', 'balancePayment'])
+            ->whereIn('lawyer_id', $lawyerIds)
+            ->where('status', 'completed')
+            ->latest()->get();
+
+        $cancelled = Consultation::with(['client', 'lawyer'])
+            ->whereIn('lawyer_id', $lawyerIds)
+            ->where('status', 'cancelled')
+            ->latest()->get();
+
+        $expired   = Consultation::with(['client', 'lawyer'])
+            ->whereIn('lawyer_id', $lawyerIds)
+            ->where('status', 'expired')
+            ->latest()->get();
+
+        return view('lawfirm.consultations', compact(
+            'firm', 'pending', 'upcoming', 'completed', 'cancelled', 'expired'
+        ));
     }
 }

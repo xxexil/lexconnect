@@ -31,7 +31,7 @@ class ConsultationController extends Controller
                   ->orWhereIn('status', ['upcoming','completed','cancelled','expired']);
             })
             ->orderByRaw("FIELD(status,'pending','upcoming','completed','cancelled','expired')")
-            ->orderBy('scheduled_at')
+            ->orderBy('scheduled_at', 'desc')
             ->get();
         $activeConsultation = $consultations->where('status','upcoming')->first();
         return view('consultations', compact('consultations','activeConsultation'));

@@ -37,7 +37,8 @@ class MessageController extends Controller
                         'name' => $conversation->lawyer->name,
                         'avatar_url' => $conversation->lawyer->avatar_url,
                     ] : null,
-                    'last_message' => $conversation->latestMessage?->body,
+                    'last_message' => $conversation->latestMessage?->body ?: ($conversation->latestMessage?->attachment_name ? 'Attachment' : null),
+                    'last_attachment_type' => $conversation->latestMessage?->attachment_type,
                     'last_at' => $conversation->latestMessage?->created_at,
                     'unread' => $unread,
                 ];
@@ -63,18 +64,7 @@ class MessageController extends Controller
             ->with('sender:id,name,avatar')
             ->orderBy('created_at')
             ->get()
-            ->map(fn (Message $message) => [
-                'id' => $message->id,
-                'body' => $message->body,
-                'sender_id' => $message->sender_id,
-                'sender_name' => $message->sender?->name,
-                'created_at' => $message->created_at,
-                'is_mine' => $message->sender_id === $user->id,
-                'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
-                'attachment_name' => $message->attachment_name,
-                'attachment_type' => $message->attachment_type,
-                'batch_uuid' => $message->batch_uuid,
-            ])
+            ->map(fn (Message $message) => $message->toApiArray($user->id))
             ->values();
 
         return response()->json([
@@ -105,9 +95,9 @@ class MessageController extends Controller
         $request->validate([
             'conversation_id' => 'required|exists:conversations,id',
             'body' => 'nullable|string|max:2000',
-            'attachment' => 'nullable|file|max:10240|mimes:jpeg,png,jpg,gif,webp,pdf,doc,docx,txt',
+            'attachment' => 'nullable|file|max:20480|mimes:jpeg,png,jpg,gif,webp,heic,heif,pdf,doc,docx,txt,mp3,wav,m4a,aac,ogg,oga,webm',
             'attachments' => 'nullable|array',
-            'attachments.*' => 'file|max:10240|mimes:jpeg,png,jpg,gif,webp,pdf,doc,docx,txt',
+            'attachments.*' => 'file|max:20480|mimes:jpeg,png,jpg,gif,webp,heic,heif,pdf,doc,docx,txt,mp3,wav,m4a,aac,ogg,oga,webm',
         ]);
 
         $user = $request->user();
@@ -143,7 +133,7 @@ class MessageController extends Controller
                     'body' => $index === 0 ? ($request->body ?? '') : '',
                     'attachment_path' => $path,
                     'attachment_name' => $file->getClientOriginalName(),
-                    'attachment_type' => str_starts_with($file->getMimeType(), 'image/') ? 'image' : 'file',
+                    'attachment_type' => Message::attachmentTypeForMime($file->getMimeType()),
                     'batch_uuid' => $batchUuid,
                 ]));
             }
@@ -156,18 +146,14 @@ class MessageController extends Controller
             }
         });
 
-        return response()->json([
-            'messages' => $messages->map(fn (Message $message) => [
-                'id' => $message->id,
-                'sender_id' => $message->sender_id,
-                'body' => $message->body,
-                'time' => $message->created_at->format('g:i A'),
-                'created_at' => $message->created_at,
-                'attachment_path' => $message->attachment_path ? asset('storage/' . $message->attachment_path) : null,
-                'attachment_name' => $message->attachment_name,
-                'attachment_type' => $message->attachment_type,
-                'batch_uuid' => $message->batch_uuid,
-            ])->values(),
-        ]);
+        $payload = $messages
+            ->map(fn (Message $message) => $message->loadMissing('sender')->toApiArray($user->id))
+            ->values();
+        $first = $payload->first();
+
+        return response()->json(array_merge($first ?? [], [
+            'message' => $first,
+            'messages' => $payload,
+        ]));
     }
 }

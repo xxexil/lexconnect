@@ -31,8 +31,12 @@
     <div class="lp-consult-card" style="border-left-color:#1a3d2b;">
         <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:24px;row-gap:16px;width:100%;">
             <div style="display:flex;align-items:center;gap:16px;min-width:0;">
-                <div class="lp-req-avatar" style="background:#1a3d2b;width:52px;height:52px;line-height:52px;font-size:1.2rem;flex-shrink:0;">
-                    {{ strtoupper(substr($member->user->name, 0, 1)) }}
+                <div style="width:52px;height:52px;border-radius:50%;background:#1a3d2b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;flex-shrink:0;overflow:hidden;">
+                    @if($member->user->avatar_url)
+                        <img src="{{ $member->user->avatar_url }}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="{{ $member->user->name }}">
+                    @else
+                        {{ strtoupper(substr($member->user->name, 0, 1)) }}
+                    @endif
                 </div>
                 <div style="flex:1;min-width:260px;">
                     <div style="font-weight:700;font-size:1rem;color:#1e2d4d;">{{ $member->user->name }}</div>
@@ -56,6 +60,12 @@
                 <div style="font-size:.82rem;color:#6c757d;text-align:right;">
                     <i class="fas fa-star" style="color:#b5860d;"></i> {{ number_format($member->rating, 1) }}
                     ({{ $member->reviews_count }} reviews)
+                </div>
+                <div style="font-size:.78rem;color:#adb5bd;text-align:right;">
+                    <i class="fas fa-calendar-check" style="margin-right:3px;"></i>{{ $member->total_consultations }} consultation{{ $member->total_consultations != 1 ? 's' : '' }}
+                    @if($member->joined_at)
+                    &nbsp;·&nbsp; Joined {{ \Carbon\Carbon::parse($member->joined_at)->format('M j, Y') }}
+                    @endif
                 </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;width:100%;">
                     <form method="POST" action="{{ route('lawfirm.messages.start') }}" style="margin:0;">
@@ -82,17 +92,48 @@
         No team members yet. Accept lawyer applications to build your team.
     </div>
     @endforelse
+
+    {{-- Team pagination --}}
+    <div id="pg-bar-team" class="lf-pg-bar" style="display:none;">
+        <button class="pg-prev" onclick="changePage('team',-1)"><i class="fas fa-chevron-left"></i> Previous</button>
+        <span class="pg-info"></span>
+        <button class="pg-next" onclick="changePage('team',1)">Next <i class="fas fa-chevron-right"></i></button>
+    </div>
 </div>
 
 {{-- APPLICATIONS TAB --}}
 <div id="tab-applications" class="lf-tab-content" style="display:none;">
+    {{-- Search + Filter --}}
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+        <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 14px;flex:1;min-width:200px;max-width:360px;">
+            <i class="fas fa-search" style="color:#adb5bd;font-size:.85rem;"></i>
+            <input type="text" id="appSearch" placeholder="Search applicants..." autocomplete="off"
+                style="border:none;outline:none;font-size:.88rem;color:#1e2d4d;width:100%;background:transparent;"
+                oninput="filterApps()">
+        </div>
+        <div style="display:flex;gap:6px;">
+            <button onclick="setAppFilter('all', this)" class="app-filter-btn active" data-filter="all">
+                All <span style="background:#e2e8f0;color:#6c757d;font-size:.72rem;padding:1px 7px;border-radius:20px;margin-left:4px;">{{ $applications->count() }}</span>
+            </button>
+            <button onclick="setAppFilter('pending', this)" class="app-filter-btn" data-filter="pending">
+                Pending <span style="background:#fef3c7;color:#92400e;font-size:.72rem;padding:1px 7px;border-radius:20px;margin-left:4px;">{{ $applications->where('status','pending')->count() }}</span>
+            </button>
+            <button onclick="setAppFilter('rejected', this)" class="app-filter-btn" data-filter="rejected">
+                Rejected <span style="background:#fee2e2;color:#991b1b;font-size:.72rem;padding:1px 7px;border-radius:20px;margin-left:4px;">{{ $applications->where('status','rejected')->count() }}</span>
+            </button>
+        </div>
+    </div>
     @forelse($applications as $app)
     @php $lp = $app->lawyer->lawyerProfile; @endphp
-    <div class="lp-consult-card app-card" style="border-left-color:{{ $app->status === 'pending' ? '#ffc107' : ($app->status === 'accepted' ? '#28a745' : '#dc3545') }};">
+    <div class="lp-consult-card app-card" data-app-name="{{ strtolower($app->lawyer->name) }}" data-app-status="{{ $app->status }}" style="border-left-color:{{ $app->status === 'pending' ? '#ffc107' : '#dc3545' }};">
         {{-- Top row: avatar + info + status badge --}}
         <div style="display:flex;align-items:flex-start;gap:14px;">
-            <div class="lp-req-avatar" style="width:48px;height:48px;line-height:48px;font-size:1.1rem;flex-shrink:0;">
-                {{ strtoupper(substr($app->lawyer->name, 0, 1)) }}
+            <div style="width:48px;height:48px;border-radius:50%;background:#1e2d4d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0;overflow:hidden;">
+                @if($app->lawyer->avatar_url)
+                    <img src="{{ $app->lawyer->avatar_url }}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="{{ $app->lawyer->name }}">
+                @else
+                    {{ strtoupper(substr($app->lawyer->name, 0, 1)) }}
+                @endif
             </div>
             <div style="flex:1;min-width:0;">
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -152,8 +193,12 @@
             {{-- Header --}}
             <div class="lf-rm-header">
                 <div class="lf-rm-head-main">
-                    <div class="lp-req-avatar lf-rm-avatar">
-                        {{ strtoupper(substr($app->lawyer->name, 0, 1)) }}
+                    <div class="lp-req-avatar lf-rm-avatar" style="overflow:hidden;">
+                        @if($app->lawyer->avatar_url)
+                            <img src="{{ $app->lawyer->avatar_url }}" style="width:100%;height:100%;object-fit:cover;display:block;" alt="{{ $app->lawyer->name }}">
+                        @else
+                            {{ strtoupper(substr($app->lawyer->name, 0, 1)) }}
+                        @endif
                     </div>
                     <div class="lf-rm-head-copy">
                         <div class="lf-rm-name">{{ $app->lawyer->name }}</div>
@@ -297,6 +342,13 @@
         No applications yet. Lawyers will apply through their portal.
     </div>
     @endforelse
+
+    {{-- Applications pagination --}}
+    <div id="pg-bar-applications" class="lf-pg-bar" style="display:none;">
+        <button class="pg-prev" onclick="changePage('applications',-1)"><i class="fas fa-chevron-left"></i> Previous</button>
+        <span class="pg-info"></span>
+        <button class="pg-next" onclick="changePage('applications',1)">Next <i class="fas fa-chevron-right"></i></button>
+    </div>
 </div>
 
 @endsection
@@ -304,6 +356,14 @@
 <style>
 .lp-btn-review { background:#f0f4ff; color:#1e2d4d; border:1.5px solid #c5d0e8; border-radius:7px; padding:5px 13px; font-size:.8rem; font-weight:600; cursor:pointer; font-family:inherit; transition:all .2s; display:inline-flex;align-items:center;gap:6px; }
 .lp-btn-review:hover { background:#1e2d4d; color:#fff; border-color:#1e2d4d; }
+.lf-pg-bar { display:flex; align-items:center; justify-content:center; gap:16px; padding:18px 0 6px; }
+.lf-pg-bar .pg-prev, .lf-pg-bar .pg-next { display:flex; align-items:center; gap:6px; padding:8px 18px; border:1.5px solid #d1d5db; border-radius:8px; background:#fff; color:#1e2d4d; font-size:.85rem; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
+.lf-pg-bar .pg-prev:hover:not(:disabled), .lf-pg-bar .pg-next:hover:not(:disabled) { background:#1e2d4d; color:#fff; border-color:#1e2d4d; }
+.lf-pg-bar .pg-prev:disabled, .lf-pg-bar .pg-next:disabled { opacity:.35; cursor:not-allowed; }
+.lf-pg-bar .pg-info { font-size:.85rem; color:#6c757d; min-width:110px; text-align:center; }
+.app-filter-btn { padding:7px 14px; border:1.5px solid #e2e8f0; border-radius:8px; background:#fff; color:#6c757d; font-size:.82rem; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
+.app-filter-btn:hover { border-color:#1e2d4d; color:#1e2d4d; }
+.app-filter-btn.active { background:#1e2d4d; color:#fff; border-color:#1e2d4d; }
 /* Application card action buttons */
 .app-action-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; font-size:.82rem; font-weight:600; cursor:pointer; font-family:inherit; border:none; transition:all .18s; white-space:nowrap; }
 .app-btn-outline { background:#f4f6fb; color:#1e2d4d; border:1.5px solid #d0dae8; }
@@ -359,12 +419,86 @@
 @endpush
 @push('scripts')
 <script>
+var currentAppFilter = 'all';
+
+function setAppFilter(filter, btn) {
+    currentAppFilter = filter;
+    document.querySelectorAll('.app-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterApps();
+}
+
+function filterApps() {
+    const q = (document.getElementById('appSearch').value || '').toLowerCase();
+    document.querySelectorAll('.app-card').forEach(function(card) {
+        const nameMatch = card.dataset.appName.includes(q);
+        const statusMatch = currentAppFilter === 'all' || card.dataset.appStatus === currentAppFilter;
+        card.style.display = (nameMatch && statusMatch) ? '' : 'none';
+    });
+    tabPages['applications'] = 1;
+    paginateTab('applications');
+}
+
+// ── Pagination ──
+const PAGE_SIZE = 10;
+const tabPages = { team: 1, applications: 1 };
+
+function paginateTab(tabName) {
+    const container = document.getElementById('tab-' + tabName);
+    const cards = Array.from(container.querySelectorAll(tabName === 'team' ? '.lp-consult-card' : '.app-card')).filter(c => c.style.display !== 'none' || tabName === 'team');
+    const allCards = Array.from(container.querySelectorAll(tabName === 'team' ? '.lp-consult-card' : '.app-card'));
+    const visibleCards = tabName === 'applications'
+        ? allCards.filter(c => c.style.display !== 'none')
+        : allCards;
+
+    const total = visibleCards.length;
+    const page  = tabPages[tabName];
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const start = (page - 1) * PAGE_SIZE;
+    const end   = start + PAGE_SIZE;
+
+    // Hide all first, then show current page
+    allCards.forEach(c => { if (c.style.display !== 'none' || tabName === 'team') c.style.display = 'none'; });
+    visibleCards.forEach((c, i) => { c.style.display = (i >= start && i < end) ? '' : 'none'; });
+
+    const bar = document.getElementById('pg-bar-' + tabName);
+    if (!bar) return;
+    bar.querySelector('.pg-info').textContent = total === 0 ? 'No records' : (start + 1) + '–' + Math.min(end, total) + ' of ' + total;
+    bar.querySelector('.pg-prev').disabled = page <= 1;
+    bar.querySelector('.pg-next').disabled = page >= totalPages;
+    bar.style.display = total <= PAGE_SIZE ? 'none' : 'flex';
+}
+
+function changePage(tabName, dir) {
+    const container = document.getElementById('tab-' + tabName);
+    const allCards = Array.from(container.querySelectorAll(tabName === 'team' ? '.lp-consult-card' : '.app-card'));
+    const visibleCards = tabName === 'applications' ? allCards.filter(c => c.style.display !== 'none' || true) : allCards;
+    const total = allCards.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    tabPages[tabName] = Math.min(Math.max(1, tabPages[tabName] + dir), totalPages);
+    paginateTab(tabName);
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+['team', 'applications'].forEach(function(tab) {
+    paginateTab(tab);
+});
+
 function showTab(name, btn) {
     document.querySelectorAll('.lf-tab-content').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.lp-tab').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-' + name).style.display = 'block';
     btn.classList.add('active');
 }
+
+// Auto-open tab from URL hash
+(function() {
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'applications' || hash === 'team') {
+        const btn = document.querySelector('.lp-tab[onclick*="' + hash + '"]');
+        if (btn) showTab(hash, btn);
+    }
+})();
 function openReviewModal(id) {
     document.getElementById('reviewModal-' + id).style.display = 'flex';
     document.body.style.overflow = 'hidden';

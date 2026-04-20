@@ -15,11 +15,20 @@ class LawFirmLawyerController extends Controller
 
         $teamMembers = LawyerProfile::with('user')
             ->where('law_firm_id', $firm->id)
-            ->get();
+            ->get()
+            ->map(function ($member) {
+                $member->total_consultations = \App\Models\Consultation::where('lawyer_id', $member->user_id)->count();
+                $member->joined_at = \App\Models\FirmApplication::where('lawyer_id', $member->user_id)
+                    ->where('law_firm_id', $member->law_firm_id)
+                    ->where('status', 'accepted')
+                    ->value('responded_at');
+                return $member;
+            });
 
         $applications = FirmApplication::with(['lawyer', 'lawyer.lawyerProfile'])
             ->where('law_firm_id', $firm->id)
-            ->orderByRaw("FIELD(status,'pending','accepted','rejected')")
+            ->whereIn('status', ['pending', 'rejected'])
+            ->orderByRaw("FIELD(status,'pending','rejected')")
             ->latest()
             ->get();
 

@@ -220,6 +220,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/consultations/{consultation}/cancel',   [ConsultationController::class,'cancel'])->name('consultations.cancel');
     Route::post('/consultations/attach-document',         [ConsultationController::class,'attachDocument'])->name('consultations.attach-document');
     Route::get('/consultations/{consultation}/video',     [VideoCallController::class,   'join'])->name('consultations.video');
+    Route::get('/consultations/{consultation}/video/status',[VideoCallController::class, 'status'])->name('consultations.video.status');
     Route::post('/consultations/{consultation}/video/end',[VideoCallController::class,   'end'])->name('consultations.video.end');
 
     Route::get('/messages',      [MessageController::class,'index'])->name('messages');
@@ -259,7 +260,8 @@ Route::middleware(['auth', 'lawyer'])->prefix('lawyer')->name('lawyer.')->group(
     
     Route::post('/messages/send', [LawyerMessageController::class, 'send'])->name('messages.send');
 
-    Route::get('/earnings', [LawyerEarningsController::class, 'index'])->name('earnings');
+    Route::get('/earnings',        [LawyerEarningsController::class, 'index'])->name('earnings');
+    Route::get('/earnings/export', [LawyerEarningsController::class, 'export'])->name('earnings.export');
 
     Route::get('/profile',               [LawyerProfileController::class, 'show'])->name('profile');
     Route::post('/profile',              [LawyerProfileController::class, 'update'])->name('profile.update');
@@ -285,7 +287,8 @@ Route::middleware(['auth', 'lawfirm'])->prefix('lawfirm')->name('lawfirm.')->gro
     Route::post('/lawyers/{id}/remove',      [LawFirmLawyerController::class, 'remove'])->name('lawyers.remove');
 
     Route::get('/consultations', [LawFirmConsultationController::class, 'index'])->name('consultations');
-    Route::get('/earnings',      [LawFirmEarningsController::class, 'index'])->name('earnings');
+    Route::get('/earnings',        [LawFirmEarningsController::class, 'index'])->name('earnings');
+    Route::get('/earnings/export', [LawFirmEarningsController::class, 'export'])->name('earnings.export');
 
     Route::get('/messages',        [LawFirmMessageController::class, 'index'])->name('messages');
     Route::post('/messages/start', [LawFirmMessageController::class, 'startConversation'])->name('messages.start');

@@ -7,6 +7,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Events\MessageSent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
@@ -22,7 +23,8 @@ class MessageController extends Controller
                 return [
                     'id'          => $c->id,
                     'other_user'  => ['id' => $c->client->id, 'name' => $c->client->name, 'avatar_url' => $c->client->avatar_url],
-                    'last_message'=> $c->latestMessage?->body,
+                    'last_message'=> $c->latestMessage?->body ?: ($c->latestMessage?->attachment_name ? 'Attachment' : null),
+                    'last_attachment_type' => $c->latestMessage?->attachment_type,
                     'last_at'     => $c->latestMessage?->created_at,
                     'unread'      => $unread,
                 ];
@@ -38,18 +40,19 @@ class MessageController extends Controller
 
         $conversation->messages()->whereNull('read_at')->where('sender_id', '!=', $user->id)->update(['read_at' => now()]);
 
-        $messages = $conversation->messages()->with('sender:id,name')->orderBy('created_at')->get()->map(fn($m) => [
-            'id'          => $m->id,
-            'body'        => $m->body,
-            'sender_id'   => $m->sender_id,
-            'sender_name' => $m->sender->name,
-            'created_at'  => $m->created_at,
-            'is_mine'     => $m->sender_id === $user->id,
-        ]);
+        $messages = $conversation->messages()
+            ->with('sender:id,name,avatar')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (Message $message) => $message->toApiArray($user->id));
 
         return response()->json([
             'conversation_id' => $conversation->id,
-            'other_user'      => ['id' => $conversation->client->id, 'name' => $conversation->client->name],
+            'other_user'      => [
+                'id' => $conversation->client->id,
+                'name' => $conversation->client->name,
+                'avatar_url' => $conversation->client->avatar_url,
+            ],
             'messages'        => $messages,
         ]);
     }
@@ -58,28 +61,65 @@ class MessageController extends Controller
     {
         $request->validate([
             'conversation_id' => 'required|exists:conversations,id',
-            'body'            => 'required|string|max:5000',
+            'body'            => 'nullable|string|max:5000',
+            'attachment'      => 'nullable|file|max:20480|mimes:jpeg,png,jpg,gif,webp,heic,heif,pdf,doc,docx,txt,mp3,wav,m4a,aac,ogg,oga,webm',
+            'attachments'     => 'nullable|array',
+            'attachments.*'   => 'file|max:20480|mimes:jpeg,png,jpg,gif,webp,heic,heif,pdf,doc,docx,txt,mp3,wav,m4a,aac,ogg,oga,webm',
         ]);
 
         $user = $request->user();
         $conversation = Conversation::where('lawyer_id', $user->id)->findOrFail($request->conversation_id);
 
-        $message = $conversation->messages()->create([
-            'sender_id' => $user->id,
-            'body'      => $request->body,
-        ]);
-
-        try { 
-            broadcast(new MessageSent($message))->toOthers(); 
-        } catch (\Throwable $e) {
-            \Log::error('Broadcasting failed: ' . $e->getMessage());
+        $attachments = [];
+        if ($request->hasFile('attachment')) {
+            $attachments[] = $request->file('attachment');
+        }
+        if ($request->hasFile('attachments')) {
+            $attachments = array_merge($attachments, $request->file('attachments'));
         }
 
-        return response()->json([
-            'id'         => $message->id,
-            'body'       => $message->body,
-            'sender_id'  => $message->sender_id,
-            'created_at' => $message->created_at,
-        ]);
+        if (!$request->filled('body') && count($attachments) === 0) {
+            return response()->json(['message' => 'Message or attachment required.'], 422);
+        }
+
+        $messages = collect();
+        $batchUuid = count($attachments) > 1 ? (string) Str::uuid() : null;
+
+        if (count($attachments) === 0) {
+            $messages->push($conversation->messages()->create([
+                'sender_id' => $user->id,
+                'body'      => $request->body ?? '',
+            ]));
+        } else {
+            foreach ($attachments as $index => $file) {
+                $path = $file->store('message-attachments', 'public');
+                $messages->push($conversation->messages()->create([
+                    'sender_id'       => $user->id,
+                    'body'            => $index === 0 ? ($request->body ?? '') : '',
+                    'attachment_path' => $path,
+                    'attachment_name' => $file->getClientOriginalName(),
+                    'attachment_type' => Message::attachmentTypeForMime($file->getMimeType()),
+                    'batch_uuid'      => $batchUuid,
+                ]));
+            }
+        }
+
+        $messages->each(function (Message $message) {
+            try {
+                broadcast(new MessageSent($message->loadMissing('sender')))->toOthers();
+            } catch (\Throwable $e) {
+                \Log::error('Broadcasting failed: ' . $e->getMessage());
+            }
+        });
+
+        $payload = $messages
+            ->map(fn (Message $message) => $message->loadMissing('sender')->toApiArray($user->id))
+            ->values();
+        $first = $payload->first();
+
+        return response()->json(array_merge($first ?? [], [
+            'message' => $first,
+            'messages' => $payload,
+        ]));
     }
 }

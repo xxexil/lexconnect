@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Consultation extends Model
 {
@@ -33,6 +34,48 @@ class Consultation extends Model
         return $this->type === 'video'
             && $this->status === 'upcoming'
             && ($at ?? now())->gte($this->videoJoinOpensAt());
+    }
+
+    public function getCaseDocumentUrlAttribute(): ?string
+    {
+        if (!$this->case_document) {
+            return null;
+        }
+
+        if (str_starts_with($this->case_document, 'http')) {
+            return $this->case_document;
+        }
+
+        return Storage::disk('public')->url($this->case_document);
+    }
+
+    public function videoRoomName(): string
+    {
+        return 'LexConnect-' . $this->code;
+    }
+
+    public function videoJoinUrl(): string
+    {
+        return 'https://meet.jit.si/' . rawurlencode($this->videoRoomName());
+    }
+
+    public function toApiArray(?int $viewerId = null): array
+    {
+        return [
+            'id'                => $this->id,
+            'code'              => $this->code,
+            'scheduled_at'      => $this->scheduled_at,
+            'type'              => $this->type,
+            'status'            => $this->status,
+            'duration_minutes'  => $this->duration_minutes,
+            'price'             => $this->price,
+            'notes'             => $this->notes,
+            'case_document'     => $this->case_document,
+            'case_document_url' => $this->case_document_url,
+            'can_join_video'    => $this->canJoinVideoCall(),
+            'video_room_name'   => $this->type === 'video' ? $this->videoRoomName() : null,
+            'video_join_url'    => $this->type === 'video' ? $this->videoJoinUrl() : null,
+        ];
     }
 
     public function client() {

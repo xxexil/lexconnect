@@ -26,6 +26,11 @@
         .forgot-link:hover { text-decoration: underline; }
         .btn-primary-auth { width: 100%; padding: 13px; background: #1e2d4d; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; letter-spacing: .5px; transition: background .2s; }
         .btn-primary-auth:hover { background: #162240; }
+        /* Hide browser native password reveal icon */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear,
+        input::-webkit-credentials-auto-fill-button { display: none !important; }
+        input[type="password"] { -webkit-appearance: none; }
         .auth-footer { text-align: center; margin-top: 24px; font-size: .88rem; color: #6c757d; }
         .auth-footer a { color: #b5860d; font-weight: 600; text-decoration: none; }
         .demo-hint { background: #f8f9fa; border-left: 4px solid #b5860d; border-radius: 0 8px 8px 0; padding: 12px 16px; margin-bottom: 24px; font-size: .82rem; color: #555; }
@@ -72,7 +77,12 @@
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" name="password" placeholder="••••••••" required>
+                <div style="position:relative;">
+                    <input type="password" name="password" id="loginPassword" placeholder="••••••••" required style="padding-right:42px;">
+                    <button type="button" onclick="togglePwd('loginPassword','loginEye')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#adb5bd;padding:0;font-size:.95rem;">
+                        <i class="fas fa-eye" id="loginEye"></i>
+                    </button>
+                </div>
             </div>
             <div class="remember-row">
                 <label><input type="checkbox" name="remember"> Remember me</label>
@@ -87,3 +97,17 @@
     </div>
 </body>
 </html>
+<script>
+function togglePwd(inputId, iconId) {
+    var input = document.getElementById(inputId);
+    var icon  = document.getElementById(iconId);
+    if (!input || !icon) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+</script>

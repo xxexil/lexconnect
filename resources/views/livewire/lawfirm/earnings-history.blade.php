@@ -44,6 +44,22 @@
         Updating transactions...
     </div>
 
+    {{-- Filtered subtotal bar --}}
+    @if(($search !== '' || $status !== '' || $type !== '') && ($filteredCut > 0 || $filteredPending > 0))
+    <div style="margin:0 22px 16px;padding:12px 18px;background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;display:flex;gap:24px;flex-wrap:wrap;font-size:.85rem;">
+        @if($filteredCut > 0)
+        <span><i class="fas fa-check-circle" style="color:#16a34a;margin-right:5px;"></i>
+            <strong>Filtered Firm Cut:</strong> &#8369;{{ number_format($filteredCut, 2) }}
+        </span>
+        @endif
+        @if($filteredPending > 0)
+        <span><i class="fas fa-hourglass-half" style="color:#f59e0b;margin-right:5px;"></i>
+            <strong>Filtered Pending:</strong> &#8369;{{ number_format($filteredPending, 2) }}
+        </span>
+        @endif
+    </div>
+    @endif
+
     @if($payments->isEmpty())
         <div class="lp-empty-sm"><i class="fas fa-peso-sign"></i> No transactions found</div>
     @else
@@ -54,6 +70,8 @@
                         <th>Client</th>
                         <th>Lawyer</th>
                         <th>Consultation</th>
+                        <th>Type</th>
+                        <th>Payment Type</th>
                         <th>Amount</th>
                         <th>Firm Cut</th>
                         <th>Status</th>
@@ -62,15 +80,37 @@
                 </thead>
                 <tbody>
                     @foreach($payments as $p)
-                        <tr wire:key="firm-payment-row-{{ $p->id }}">
-                            <td>{{ $p->client->name ?? '—' }}</td>
-                            <td>{{ $p->lawyer->name ?? '—' }}</td>
-                            <td style="font-size:.8rem;color:#6c757d;">{{ $p->consultation->code ?? 'N/A' }}</td>
-                            <td><strong>&#8369;{{ number_format($p->amount, 2) }}</strong></td>
-                            <td><strong style="color:#1e2d4d;">&#8369;{{ number_format($p->firm_cut, 2) }}</strong></td>
-                            <td><span class="lp-pay-badge {{ $p->status }}">{{ ucfirst(str_replace('_', ' ', $p->status)) }}</span></td>
-                            <td style="font-size:.82rem;color:#6c757d;">{{ $p->created_at->format('M j, Y') }}</td>
-                        </tr>
+                    @php
+                        $consType    = $p->consultation?->type ?? null;
+                        $typeLabels  = ['downpayment' => 'Downpayment 50%', 'balance' => 'Balance 50%', 'full' => 'Full'];
+                        $isPending   = $p->status === 'pending';
+                        $statusLabel = $p->status === 'downpayment_paid' ? 'Paid (Down)' : ucfirst(str_replace('_',' ',$p->status));
+                    @endphp
+                    <tr wire:key="firm-payment-row-{{ $p->id }}">
+                        <td>{{ $p->client->name ?? '—' }}</td>
+                        <td>{{ $p->lawyer->name ?? '—' }}</td>
+                        <td style="font-size:.8rem;color:#6c757d;">{{ $p->consultation?->code ?? '—' }}</td>
+                        <td>
+                            @if($consType === 'video')
+                                <span style="font-size:.78rem;background:#eff6ff;color:#1d4ed8;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap;"><i class="fas fa-video" style="margin-right:3px;"></i>Video</span>
+                            @elseif($consType)
+                                <span style="font-size:.78rem;background:#f0fdf4;color:#15803d;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap;"><i class="fas fa-handshake" style="margin-right:3px;"></i>{{ ucfirst($consType) }}</span>
+                            @else
+                                <span style="color:#adb5bd;">—</span>
+                            @endif
+                        </td>
+                        <td><span class="lp-type-badge">{{ $typeLabels[$p->type] ?? ucfirst($p->type ?? '') }}</span></td>
+                        <td><strong>&#8369;{{ number_format($p->amount, 2) }}</strong></td>
+                        <td><strong style="color:#1e2d4d;">&#8369;{{ number_format($p->firm_cut, 2) }}</strong></td>
+                        <td>
+                            @if($isPending)
+                                <span class="lp-pay-badge pending" title="Awaiting client payment">Awaiting Payment</span>
+                            @else
+                                <span class="lp-pay-badge {{ $p->status }}">{{ $statusLabel }}</span>
+                            @endif
+                        </td>
+                        <td style="font-size:.82rem;color:#6c757d;">{{ $p->created_at->format('M j, Y') }}</td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>

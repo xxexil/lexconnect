@@ -37,6 +37,10 @@ class LawyerProfile extends Model {
             return false;
         }
 
+        if (($this->availability_status ?? 'offline') === 'offline') {
+            return false;
+        }
+
         $at ??= now();
 
         return Consultation::where('lawyer_id', $this->user_id)
@@ -64,6 +68,20 @@ class LawyerProfile extends Model {
             return ($this->availability_status ?? 'offline') !== 'offline';
         }
 
+        $tokenCutoff = $at->copy()->subMinutes(5);
+        if (Schema::hasTable('personal_access_tokens')) {
+            $hasFreshApiToken = DB::table('personal_access_tokens')
+                ->where('tokenable_type', User::class)
+                ->where('tokenable_id', $this->user_id)
+                ->whereNotNull('last_used_at')
+                ->where('last_used_at', '>=', $tokenCutoff)
+                ->exists();
+
+            if ($hasFreshApiToken) {
+                return true;
+            }
+        }
+
         $sessionTable = config('session.table', 'sessions');
         if (!Schema::hasTable($sessionTable)) {
             return ($this->availability_status ?? 'offline') !== 'offline';
@@ -80,6 +98,10 @@ class LawyerProfile extends Model {
     public function currentStatus(?Carbon $at = null): string
     {
         $at ??= now();
+
+        if (($this->availability_status ?? 'offline') === 'offline') {
+            return 'offline';
+        }
 
         if (auth()->check() && (int) auth()->id() === (int) $this->user_id) {
             return $this->isInConsultation($at) ? 'busy' : 'active';

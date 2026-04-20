@@ -135,6 +135,14 @@
             border: 1px solid rgba(34,197,94,.25); border-radius: 20px;
             padding: 5px 14px; font-size: .8rem; font-weight: 600;
         }
+
+        #balance-status { margin-top: 14px; display: none; }
+        #balance-status span {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(5,150,105,.12); color: #6ee7b7;
+            border: 1px solid rgba(5,150,105,.3); border-radius: 20px;
+            padding: 7px 14px; font-size: .82rem; font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -204,6 +212,11 @@
         <div id="vc-status">
             <span><i class="fas fa-circle" style="font-size:.45rem;"></i> Video call window is open</span>
         </div>
+        @if(Auth::user()->role !== 'lawyer')
+        <div id="balance-status">
+            <span><i class="fas fa-credit-card"></i> Session ended. Opening remaining balance payment...</span>
+        </div>
+        @endif
 
         <button type="button" class="vc-join-btn" id="joinBtn" onclick="openCall()">
             <i class="fas fa-video"></i> Start Video Call
@@ -224,7 +237,10 @@
 
 <script>
     const jitsiUrl = @json($jitsiUrl);
+    const isClient = @json(Auth::user()->role !== 'lawyer');
+    const statusUrl = @json(route('consultations.video.status', $consultation));
     let callWindow = null;
+    let balanceRedirecting = false;
 
     function openCall() {
         const w = Math.min(1280, screen.availWidth  - 40);
@@ -252,7 +268,41 @@
     window.addEventListener('load', function () {
         // Small delay so the browser doesn't treat it as unwanted popup
         setTimeout(openCall, 500);
+
+        if (isClient) {
+            setInterval(checkSessionStatus, 5000);
+            setTimeout(checkSessionStatus, 1500);
+        }
     });
+
+    function checkSessionStatus() {
+        if (balanceRedirecting) return;
+
+        fetch(statusUrl, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Could not check session status.');
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.status === 'completed' && data.balance_checkout_url) {
+                    balanceRedirecting = true;
+                    var status = document.getElementById('balance-status');
+                    if (status) status.style.display = 'block';
+                    setTimeout(function() {
+                        window.location.href = data.balance_checkout_url;
+                    }, 900);
+                }
+            })
+            .catch(function() {
+                // Keep polling quietly; transient network errors should not interrupt the call.
+            });
+    }
 </script>
 
 </body>

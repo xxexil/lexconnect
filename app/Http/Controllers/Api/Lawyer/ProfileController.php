@@ -78,6 +78,10 @@ class ProfileController extends Controller
 
     public function updateAvailability(Request $request)
     {
+        $request->validate([
+            'status' => 'sometimes|in:available,busy,offline,active',
+        ]);
+
         $user = $request->user();
         $lp = $user->lawyerProfile;
 
@@ -85,9 +89,22 @@ class ProfileController extends Controller
             return response()->json(['message' => 'Lawyer profile not found.'], 404);
         }
 
+        $status = $request->input('status');
+        if ($status) {
+            $lp->availability_status = $status === 'active' ? 'available' : $status;
+        }
+
+        if (($status ?? null) !== 'offline') {
+            $request->user()?->currentAccessToken()?->forceFill(['last_used_at' => now()])->save();
+        }
+
+        $lp->save();
+        $lp->refresh();
+
         return response()->json([
-            'message' => 'Availability is now automatic.',
+            'message' => 'Availability updated.',
             'status' => $lp->currentStatus(),
+            'availability_status' => $lp->availability_status,
         ]);
     }
 }

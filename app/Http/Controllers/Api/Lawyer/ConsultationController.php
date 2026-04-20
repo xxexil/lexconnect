@@ -34,6 +34,11 @@ class ConsultationController extends Controller
             'duration_minutes' => $c->duration_minutes,
             'price'            => $c->price,
             'notes'            => $c->notes,
+            'case_document'     => $c->case_document,
+            'case_document_url' => $c->case_document_url,
+            'can_join_video'    => $c->canJoinVideoCall(),
+            'video_room_name'   => $c->type === 'video' ? $c->videoRoomName() : null,
+            'video_join_url'    => $c->type === 'video' ? $c->videoJoinUrl() : null,
             'client'           => ['id' => $c->client->id, 'name' => $c->client->name, 'avatar_url' => $c->client->avatar_url],
         ]);
 
@@ -69,5 +74,26 @@ class ConsultationController extends Controller
         }
 
         return response()->json(['message' => 'Consultation marked as completed. The client can now pay the remaining balance.']);
+    }
+
+    public function video(Request $request, $id)
+    {
+        $consultation = Consultation::where('lawyer_id', $request->user()->id)->findOrFail($id);
+
+        if ($consultation->type !== 'video') {
+            return response()->json(['message' => 'This consultation is not a video call.'], 422);
+        }
+
+        return response()->json([
+            'consultation' => $consultation->toApiArray($request->user()->id),
+            'room_name' => $consultation->videoRoomName(),
+            'join_url' => $consultation->videoJoinUrl(),
+            'display_name' => $request->user()->name,
+            'can_join' => $consultation->canJoinVideoCall(),
+            'join_opens_at' => $consultation->videoJoinOpensAt(),
+            'ice_servers' => [
+                ['urls' => ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302']],
+            ],
+        ]);
     }
 }

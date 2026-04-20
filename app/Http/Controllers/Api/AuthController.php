@@ -34,6 +34,7 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('mobile-app')->plainTextToken;
+        $user->tokens()->latest('id')->first()?->forceFill(['last_used_at' => now()])->save();
 
         $profile = null;
         if ($user->role === 'lawyer') {
@@ -139,6 +140,8 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = $request->user();
+        $request->user()?->currentAccessToken()?->forceFill(['last_used_at' => now()])->save();
+
         $profile = null;
         if ($user->role === 'lawyer') {
             $profile = $user->lawyerProfile;

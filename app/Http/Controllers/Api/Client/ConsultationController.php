@@ -37,6 +37,11 @@ class ConsultationController extends Controller
             'duration_minutes' => $c->duration_minutes,
             'price'            => $c->price,
             'notes'            => $c->notes,
+            'case_document'     => $c->case_document,
+            'case_document_url' => $c->case_document_url,
+            'can_join_video'    => $c->canJoinVideoCall(),
+            'video_room_name'   => $c->type === 'video' ? $c->videoRoomName() : null,
+            'video_join_url'    => $c->type === 'video' ? $c->videoJoinUrl() : null,
             'lawyer'           => ['id' => $c->lawyer->id, 'name' => $c->lawyer->name, 'avatar_url' => $c->lawyer->avatar_url],
             'has_review'       => $c->review !== null,
         ]);
@@ -52,6 +57,7 @@ class ConsultationController extends Controller
             'duration_minutes' => 'required|integer|in:30,60,90,120',
             'type'             => 'required|in:video,phone,in-person',
             'notes'            => 'nullable|string|max:1000',
+            'case_document'     => 'nullable|file|max:20480|mimes:jpg,jpeg,png,webp,heic,heif,pdf,doc,docx,txt',
         ]);
 
         $user = $request->user();
@@ -60,6 +66,11 @@ class ConsultationController extends Controller
         $lawyerProfile = \App\Models\LawyerProfile::where('user_id', $request->lawyer_id)->firstOrFail();
         $price = ($lawyerProfile->hourly_rate / 60) * $request->duration_minutes;
         $price = round($price, 2);
+
+        $docPath = null;
+        if ($request->hasFile('case_document')) {
+            $docPath = $request->file('case_document')->store('case-documents', 'public');
+        }
 
         $consultation = Consultation::create([
             'code'             => 'LC-' . strtoupper(Str::random(8)),
@@ -71,6 +82,7 @@ class ConsultationController extends Controller
             'status'           => 'pending',
             'price'            => $price,
             'notes'            => $request->notes,
+            'case_document'    => $docPath,
         ]);
 
         // Create payment records
@@ -115,7 +127,7 @@ class ConsultationController extends Controller
 
         return response()->json([
             'message'      => 'Consultation booked successfully.',
-            'consultation' => $consultation,
+            'consultation' => $consultation->toApiArray($user->id),
             'price'        => $price,
             'downpayment'  => $downpayment,
             'payment'      => [
@@ -144,5 +156,26 @@ class ConsultationController extends Controller
         Payment::where('consultation_id', $consultation->id)->update(['status' => 'refunded']);
 
         return response()->json(['message' => 'Consultation cancelled successfully.']);
+    }
+
+    public function video(Request $request, $id)
+    {
+        $consultation = Consultation::where('client_id', $request->user()->id)->findOrFail($id);
+
+        if ($consultation->type !== 'video') {
+            return response()->json(['message' => 'This consultation is not a video call.'], 422);
+        }
+
+        return response()->json([
+            'consultation' => $consultation->toApiArray($request->user()->id),
+            'room_name' => $consultation->videoRoomName(),
+            'join_url' => $consultation->videoJoinUrl(),
+            'display_name' => $request->user()->name,
+            'can_join' => $consultation->canJoinVideoCall(),
+            'join_opens_at' => $consultation->videoJoinOpensAt(),
+            'ice_servers' => [
+                ['urls' => ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302']],
+            ],
+        ]);
     }
 }

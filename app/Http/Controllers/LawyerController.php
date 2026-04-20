@@ -12,6 +12,11 @@ use Illuminate\Http\Request;
 class LawyerController extends Controller
 {
     public function show($id) {
+        // Lawyers and law firms should not be able to browse client-facing pages
+        if (auth()->check() && in_array(auth()->user()->role, ['lawyer', 'law_firm'])) {
+            abort(403, 'Access denied. This page is for clients only.');
+        }
+
         $profile = LawyerProfile::with(['user'])->where('user_id', $id)->firstOrFail();
         $reviews = Review::with('client')
             ->where('lawyer_id', $id)

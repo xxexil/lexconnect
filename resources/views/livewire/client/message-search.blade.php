@@ -1,4 +1,4 @@
-<div>
+<div style="flex:1;overflow-y:auto;overflow-x:hidden;">
     <div style="padding:10px 14px 8px;border-bottom:1px solid #f0f2f5;">
         <div style="display:flex;align-items:center;gap:8px;background:#f5f7fa;border:1px solid #e3e7ed;border-radius:8px;padding:7px 12px;">
             <i class="fas fa-search" style="color:#aaa;font-size:.8rem;"></i>

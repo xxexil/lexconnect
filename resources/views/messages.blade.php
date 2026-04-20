@@ -10,7 +10,7 @@
 .msg-layout { display: flex; height: calc(100vh - 70px); background: #f5f7fa; overflow: hidden; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,.07); min-width: 0; }
 
 /* Sidebar */
-.msg-sidebar { width: 300px; flex-shrink: 0; background: #fff; display: flex; flex-direction: column; border-right: 1px solid #f0f2f5; }
+.msg-sidebar { width: 300px; flex-shrink: 0; background: #fff; display: flex; flex-direction: column; border-right: 1px solid #f0f2f5; overflow: hidden; }
 .msg-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid #f0f2f5; font-weight: 700; color: #1e2d4d; font-size: .95rem; }
 .msg-count { background: #1e2d4d; color: #fff; border-radius: 20px; padding: 2px 9px; font-size: .75rem; font-weight: 700; }
 .msg-conv-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f5f6fa; text-decoration: none; transition: background .15s; cursor: pointer; }

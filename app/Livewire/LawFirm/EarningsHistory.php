@@ -48,7 +48,7 @@ class EarningsHistory extends Component
         $lawyerIds = LawyerProfile::where('law_firm_id', $firm->id)->pluck('user_id');
         $search = trim($this->search);
 
-        $payments = Payment::with(['lawyer', 'client', 'consultation'])
+        $query = Payment::with(['lawyer', 'client', 'consultation'])
             ->whereIn('lawyer_id', $lawyerIds)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($innerQuery) use ($search) {
@@ -66,12 +66,19 @@ class EarningsHistory extends Component
             })
             ->when($this->type !== '', function ($query) {
                 $query->where('type', $this->type);
-            })
-            ->latest()
-            ->paginate(10);
+            });
+
+        // Filtered subtotals
+        $filteredAll     = $query->clone()->get();
+        $filteredCut     = $filteredAll->whereIn('status', ['paid', 'downpayment_paid'])->sum('firm_cut');
+        $filteredPending = $filteredAll->where('status', 'pending')->sum(fn($p) => $p->firm_cut ?? 0);
+
+        $payments = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(10);
 
         return view('livewire.lawfirm.earnings-history', [
-            'payments' => $payments,
+            'payments'        => $payments,
+            'filteredCut'     => $filteredCut,
+            'filteredPending' => $filteredPending,
         ]);
     }
 }

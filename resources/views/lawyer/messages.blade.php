@@ -66,14 +66,15 @@
             <span><i class="fas fa-comment-dots"></i> Conversations</span>
             <span class="msg-count">{{ $conversations->count() }}</span>
         </div>
-        <div style="padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,.08);">
-            <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:7px 12px;">
-                <i class="fas fa-search" style="color:rgba(255,255,255,.35);font-size:.8rem;"></i>
+        <div style="padding:10px 14px 8px;border-bottom:1px solid #e5e7eb;">
+            <div style="display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;">
+                <i class="fas fa-search" style="color:#64748b;font-size:.8rem;"></i>
                 <input type="text" id="convSearch" placeholder="Search clients..." autocomplete="off"
-                    style="border:none;background:transparent;outline:none;font-size:.87rem;color:#fff;width:100%;">
-                <style>#convSearch::placeholder{color:rgba(255,255,255,.35);}</style>
+                    style="border:none;background:transparent;outline:none;font-size:.87rem;color:#0f172a;width:100%;">
+                <style>#convSearch::placeholder{color:#94a3b8;}</style>
             </div>
         </div>
+        <div class="msg-conv-list">
         @forelse($conversations as $conv)
         @php
             $other = $conv->client;
@@ -83,7 +84,13 @@
         @endphp
         <a href="{{ route('lawyer.messages', ['conversation' => $conv->id]) }}"
            class="msg-conv-item {{ $isActive ? 'active' : '' }}">
-            <div class="msg-conv-avatar">{{ strtoupper(substr($other->name,0,1)) }}</div>
+            <div class="msg-conv-avatar" style="{{ $other->avatar_url ? 'padding:0;overflow:hidden;' : '' }}">
+                @if($other->avatar_url)
+                    <img src="{{ $other->avatar_url }}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;" alt="{{ $other->name }}">
+                @else
+                    {{ strtoupper(substr($other->name,0,1)) }}
+                @endif
+            </div>
             <div class="msg-conv-info">
                 <div class="msg-conv-name">{{ $other->name }}</div>
                 <div class="msg-conv-preview">{{ $latest ? Str::limit($latest->body ?: ($latest->attachment_name ?: 'Attachment'), 38) : 'No messages yet' }}</div>
@@ -103,6 +110,7 @@
             <i class="fas fa-search" style="display:block;font-size:1.4rem;margin-bottom:6px;"></i>
             No results found
         </div>
+        </div>
     </div>
 
     {{-- Chat window --}}
@@ -110,7 +118,13 @@
         @if($activeConv)
         @php $other = $activeConv->client; @endphp
         <div class="msg-chat-header">
-            <div class="msg-chat-avatar">{{ strtoupper(substr($other->name,0,1)) }}</div>
+            <div class="msg-chat-avatar" style="{{ $other->avatar_url ? 'padding:0;overflow:hidden;' : '' }}">
+                @if($other->avatar_url)
+                    <img src="{{ $other->avatar_url }}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;" alt="{{ $other->name }}">
+                @else
+                    {{ strtoupper(substr($other->name,0,1)) }}
+                @endif
+            </div>
             <div>
                 <div class="msg-chat-name">{{ $other->name }}</div>
                 <div class="msg-chat-status">

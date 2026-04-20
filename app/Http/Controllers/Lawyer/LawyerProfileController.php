@@ -14,8 +14,13 @@ class LawyerProfileController extends Controller
     {
         $user    = Auth::user();
         $profile = $user->lawyerProfile;
+        $reviews = \App\Models\Review::with('client')
+            ->where('lawyer_id', $user->id)
+            ->latest()
+            ->take(5)
+            ->get();
 
-        return view('lawyer.profile', compact('user', 'profile'));
+        return view('lawyer.profile', compact('user', 'profile', 'reviews'));
     }
 
     public function update(Request $request)
@@ -31,7 +36,6 @@ class LawyerProfileController extends Controller
             'location'         => 'nullable|string|max:150',
             'bio'              => 'nullable|string|max:2000',
             'password'         => 'nullable|min:6|confirmed',
-            'gcash_number'     => 'nullable|string|max:20',
             'government_id'    => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'ibp_id'           => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
@@ -45,21 +49,11 @@ class LawyerProfileController extends Controller
 
         $data = $request->only([
             'specialty', 'firm', 'hourly_rate', 'experience_years', 'location', 'bio',
-            'gcash_number'
         ]);
-
-        if ($request->hasFile('gcash_qr')) {
-            $oldQr = $profile->gcash_qr;
-            if ($oldQr) {
-                Storage::disk('public')->delete($oldQr);
-            }
-            $qrPath = $request->file('gcash_qr')->store('gcash-qr', 'public');
-            $data['gcash_qr'] = $qrPath;
-        }
 
         foreach ([
             'government_id' => 'government_id_doc',
-            'ibp_id' => 'ibp_id_doc',
+            'ibp_id'        => 'ibp_id_doc',
         ] as $input => $column) {
             if ($request->hasFile($input)) {
                 if ($profile->{$column}) {

@@ -24,10 +24,30 @@ class LawyerConsultationController extends Controller
             })
             ->orderBy('created_at', 'desc')
             ->get();
-        $upcoming  = Consultation::with(['client', 'payments', 'balancePayment'])->where('lawyer_id', $user->id)->where('status', 'upcoming')->orderBy('scheduled_at')->get();
-        $completed = Consultation::with(['client', 'payments', 'balancePayment'])->where('lawyer_id', $user->id)->where('status', 'completed')->orderBy('scheduled_at', 'desc')->get();
-        $cancelled = Consultation::with('client')->where('lawyer_id', $user->id)->where('status', 'cancelled')->orderBy('updated_at', 'desc')->get();
-        $expired   = Consultation::with('client')->where('lawyer_id', $user->id)->where('status', 'expired')->orderBy('scheduled_at', 'desc')->get();
+
+        $upcoming  = Consultation::with(['client', 'payments', 'balancePayment'])
+            ->where('lawyer_id', $user->id)
+            ->where('status', 'upcoming')
+            ->orderBy('scheduled_at')
+            ->get();
+
+        $completed = Consultation::with(['client', 'payments', 'balancePayment'])
+            ->where('lawyer_id', $user->id)
+            ->where('status', 'completed')
+            ->orderBy('scheduled_at', 'desc')
+            ->get();
+
+        $cancelled = Consultation::with('client')
+            ->where('lawyer_id', $user->id)
+            ->where('status', 'cancelled')
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        $expired   = Consultation::with('client')
+            ->where('lawyer_id', $user->id)
+            ->where('status', 'expired')
+            ->orderBy('scheduled_at', 'desc')
+            ->get();
 
         return view('lawyer.consultations', compact('pending', 'upcoming', 'completed', 'cancelled', 'expired'));
     }

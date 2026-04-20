@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Client\DashboardController as ClientDashboard;
 use App\Http\Controllers\Api\Client\LawyerController as ClientLawyerController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\Api\LawFirm\ProfileController as LawFirmProfileControll
 
 // PayMongo webhook – public, no auth (signature is verified inside the controller)
 Route::post('/webhooks/paymongo', [\App\Http\Controllers\PaymentWebhookController::class, 'handle']);
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 // Public auth routes
 Route::prefix('auth')->group(function () {
@@ -48,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/consultations', [ClientConsultationController::class, 'index']);
         Route::post('/consultations', [ClientConsultationController::class, 'book']);
         Route::post('/consultations/{id}/cancel', [ClientConsultationController::class, 'cancel']);
+        Route::get('/consultations/{id}/video', [ClientConsultationController::class, 'video']);
         Route::get('/payments', [ClientPaymentController::class, 'index']);
         Route::post('/payments/{id}/resume', [ClientPaymentController::class, 'resume']);
         Route::get('/payments/{id}/status', [ClientPaymentController::class, 'status']);
@@ -67,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/consultations/{id}/accept', [LawyerConsultationController::class, 'accept']);
         Route::post('/consultations/{id}/decline', [LawyerConsultationController::class, 'decline']);
         Route::post('/consultations/{id}/complete', [LawyerConsultationController::class, 'complete']);
+        Route::get('/consultations/{id}/video', [LawyerConsultationController::class, 'video']);
         Route::get('/messages', [LawyerMessageController::class, 'index']);
         Route::get('/messages/{conversationId}', [LawyerMessageController::class, 'show']);
         Route::post('/messages/send', [LawyerMessageController::class, 'send']);
