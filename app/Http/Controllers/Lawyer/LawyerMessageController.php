@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Lawyer;
 
 use App\Events\MessageSent;
+use App\Events\MessageUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Services\MessageDeletionService;
+use App\Services\MessageUpdateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -169,5 +172,57 @@ class LawyerMessageController extends Controller
         }
 
         return redirect()->route('lawyer.messages', ['conversation' => $conv->id]);
+    }
+
+    public function destroy(Request $request, Message $message, MessageDeletionService $messageDeletionService)
+    {
+        $user = Auth::user();
+        $message->loadMissing('conversation');
+
+        if (
+            $message->sender_id !== $user->id ||
+            !$message->conversation ||
+            $message->conversation->lawyer_id !== $user->id
+        ) {
+            abort(403);
+        }
+
+        $payload = $messageDeletionService->deleteForSender($message, $user->id);
+
+        try {
+            broadcast(new \App\Events\MessageDeleted($payload))->toOthers();
+        } catch (\Throwable $e) {
+            \Log::error('Broadcasting lawyer message deletion failed: ' . $e->getMessage());
+        }
+
+        return response()->json($payload);
+    }
+
+    public function update(Request $request, Message $message, MessageUpdateService $messageUpdateService)
+    {
+        $request->validate([
+            'body' => 'required|string|max:2000',
+        ]);
+
+        $user = Auth::user();
+        $message->loadMissing('conversation');
+
+        if (
+            $message->sender_id !== $user->id ||
+            !$message->conversation ||
+            $message->conversation->lawyer_id !== $user->id
+        ) {
+            abort(403);
+        }
+
+        $payload = $messageUpdateService->updateForSender($message, $user->id, $request->string('body')->trim()->toString());
+
+        try {
+            broadcast(new MessageUpdated($payload))->toOthers();
+        } catch (\Throwable $e) {
+            \Log::error('Broadcasting lawyer message update failed: ' . $e->getMessage());
+        }
+
+        return response()->json($payload);
     }
 }

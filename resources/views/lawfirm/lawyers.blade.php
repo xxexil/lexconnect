@@ -75,10 +75,9 @@
                             <i class="fas fa-comment"></i> Message
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('lawfirm.lawyers.remove', $member->user_id) }}"
-                        onsubmit="return confirm('Remove {{ addslashes($member->user->name) }} from your firm?')" style="margin:0;">
+                    <form method="POST" action="{{ route('lawfirm.lawyers.remove', $member->user_id) }}" style="margin:0;">
                         @csrf
-                        <button type="submit" class="lp-btn-decline" style="font-size:.8rem;padding:5px 12px;">
+                        <button type="button" class="lp-btn-decline js-lawfirm-app-confirm" data-action="remove" data-name="{{ $member->user->name }}" style="font-size:.8rem;padding:5px 12px;">
                             <i class="fas fa-user-minus"></i> Remove
                         </button>
                     </form>
@@ -173,13 +172,13 @@
             @if($app->status === 'pending')
             <form method="POST" action="{{ route('lawfirm.lawyers.accept', $app->id) }}" style="margin:0;">
                 @csrf
-                <button type="submit" class="app-action-btn app-btn-accept">
+                <button type="button" class="app-action-btn app-btn-accept js-lawfirm-app-confirm" data-action="accept" data-name="{{ $app->lawyer->name }}">
                     <i class="fas fa-check"></i> Accept
                 </button>
             </form>
             <form method="POST" action="{{ route('lawfirm.lawyers.reject', $app->id) }}" style="margin:0;">
                 @csrf
-                <button type="submit" class="app-action-btn app-btn-reject" onclick="return confirm('Reject this application?')">
+                <button type="button" class="app-action-btn app-btn-reject js-lawfirm-app-confirm" data-action="reject" data-name="{{ $app->lawyer->name }}">
                     <i class="fas fa-times"></i> Reject
                 </button>
             </form>
@@ -325,11 +324,11 @@
                 <div class="lf-rm-actions">
                     <form method="POST" action="{{ route('lawfirm.lawyers.accept', $app->id) }}">
                         @csrf
-                        <button class="lp-btn-accept lf-rm-action-btn"><i class="fas fa-check"></i> Accept Application</button>
+                        <button type="button" class="lp-btn-accept lf-rm-action-btn js-lawfirm-app-confirm" data-action="accept" data-name="{{ $app->lawyer->name }}"><i class="fas fa-check"></i> Accept Application</button>
                     </form>
                     <form method="POST" action="{{ route('lawfirm.lawyers.reject', $app->id) }}">
                         @csrf
-                        <button class="lp-btn-decline lf-rm-action-btn" onclick="return confirm('Reject this application?')"><i class="fas fa-times"></i> Reject Application</button>
+                        <button type="button" class="lp-btn-decline lf-rm-action-btn js-lawfirm-app-confirm" data-action="reject" data-name="{{ $app->lawyer->name }}"><i class="fas fa-times"></i> Reject Application</button>
                     </form>
                 </div>
                 @endif
@@ -348,6 +347,20 @@
         <button class="pg-prev" onclick="changePage('applications',-1)"><i class="fas fa-chevron-left"></i> Previous</button>
         <span class="pg-info"></span>
         <button class="pg-next" onclick="changePage('applications',1)">Next <i class="fas fa-chevron-right"></i></button>
+    </div>
+</div>
+
+<div class="lf-app-confirm-modal" id="lawfirmApplicationModal" aria-hidden="true">
+    <div class="lf-app-confirm-backdrop" data-app-modal-close></div>
+    <div class="lf-app-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="lawfirmAppModalTitle">
+        <button type="button" class="lf-app-confirm-close" data-app-modal-close aria-label="Close">&times;</button>
+        <div class="lf-app-confirm-icon" id="lawfirmAppModalIcon"><i class="fas fa-check"></i></div>
+        <h2 id="lawfirmAppModalTitle">Confirm action</h2>
+        <div class="lf-app-confirm-meta" id="lawfirmAppModalMeta"></div>
+        <div class="lf-app-confirm-actions">
+            <button type="button" class="lf-app-confirm-cancel" data-app-modal-close>Cancel</button>
+            <button type="button" class="lf-app-confirm-submit" id="lawfirmAppModalSubmit">Confirm</button>
+        </div>
     </div>
 </div>
 
@@ -406,6 +419,30 @@
 .lf-rm-message { background:#fffdf8; border:1px solid #f3e4b8; border-left:4px solid #b5860d; border-radius:14px; padding:15px 18px; font-size:.92rem; color:#5b6472; font-style:italic; margin-top:8px; line-height:1.65; }
 .lf-rm-actions { display:flex; gap:12px; margin-top:28px; padding-top:22px; border-top:1px solid #e8edf5; position:sticky; bottom:0; background:linear-gradient(180deg, rgba(248,250,252,0) 0%, #f8fafc 24%, #f8fafc 100%); padding-bottom:4px; }
 .lf-rm-action-btn { font-size:.95rem; padding:12px 24px; border-radius:12px; box-shadow:0 10px 18px rgba(15,23,42,.08); }
+.lf-app-confirm-modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:24px; z-index:9600; }
+.lf-app-confirm-modal.open { display:flex; }
+.lf-app-confirm-backdrop { position:absolute; inset:0; background:rgba(15,23,42,.46); backdrop-filter:blur(4px); }
+.lf-app-confirm-dialog { position:relative; width:min(100%, 420px); background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border:1px solid rgba(226,232,240,.95); border-radius:24px; box-shadow:0 28px 80px rgba(15,23,42,.28); padding:28px 26px 24px; text-align:center; }
+.lf-app-confirm-close { position:absolute; top:14px; right:14px; width:34px; height:34px; border:none; border-radius:999px; background:#eef2f7; color:#64748b; font-size:1.25rem; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.lf-app-confirm-close:hover { background:#e2e8f0; color:#1e2d4d; }
+.lf-app-confirm-icon { width:60px; height:60px; margin:0 auto 16px; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:1.45rem; color:#fff; box-shadow:0 14px 28px rgba(15,23,42,.18); }
+.lf-app-confirm-icon.accept { background:linear-gradient(135deg, #16a34a, #15803d); }
+.lf-app-confirm-icon.reject { background:linear-gradient(135deg, #ef4444, #dc2626); }
+.lf-app-confirm-dialog h2 { margin:0; font-size:1.18rem; font-weight:800; color:#1b2c4f; }
+.lf-app-confirm-meta { margin-top:10px; color:#64748b; font-size:.92rem; line-height:1.55; }
+.lf-app-confirm-actions { display:flex; justify-content:center; gap:12px; margin-top:22px; }
+.lf-app-confirm-cancel,
+.lf-app-confirm-submit { min-width:118px; border-radius:12px; padding:11px 18px; font-size:.92rem; font-weight:700; font-family:inherit; cursor:pointer; transition:all .18s; }
+.lf-app-confirm-cancel { background:#fff; color:#475569; border:1.5px solid #d7dee8; }
+.lf-app-confirm-cancel:hover { background:#f8fafc; border-color:#cbd5e1; }
+.lf-app-confirm-submit { border:none; color:#fff; }
+.lf-app-confirm-submit.accept { background:#1a7a3c; }
+.lf-app-confirm-submit.accept:hover { background:#155f30; }
+.lf-app-confirm-submit.reject { background:#dc3545; }
+.lf-app-confirm-submit.reject:hover { background:#b91c1c; }
+.lf-app-confirm-submit.remove { background:#dc3545; }
+.lf-app-confirm-submit.remove:hover { background:#b91c1c; }
+.lf-app-confirm-submit:disabled { opacity:.65; cursor:wait; }
 @media (max-width: 760px) {
     .lf-review-overlay { padding:14px; }
     .lf-review-modal { max-height:94vh; border-radius:20px; }
@@ -414,12 +451,18 @@
     .lf-rm-grid, .lf-rm-docs-grid { grid-template-columns:1fr; }
     .lf-rm-actions { flex-direction:column; }
     .lf-rm-action-btn { width:100%; justify-content:center; }
+    .lf-app-confirm-modal { padding:16px; }
+    .lf-app-confirm-dialog { width:100%; padding:24px 18px 20px; border-radius:20px; }
+    .lf-app-confirm-actions { flex-direction:column-reverse; }
+    .lf-app-confirm-cancel,
+    .lf-app-confirm-submit { width:100%; }
 }
 </style>
 @endpush
 @push('scripts')
 <script>
 var currentAppFilter = 'all';
+let pendingLawfirmAppForm = null;
 
 function setAppFilter(filter, btn) {
     currentAppFilter = filter;
@@ -513,6 +556,74 @@ document.addEventListener('keydown', function(e) {
             el.style.display = 'none';
         });
         document.body.style.overflow = '';
+    }
+});
+
+const lawfirmAppModal = document.getElementById('lawfirmApplicationModal');
+const lawfirmAppModalIcon = document.getElementById('lawfirmAppModalIcon');
+const lawfirmAppModalTitle = document.getElementById('lawfirmAppModalTitle');
+const lawfirmAppModalMeta = document.getElementById('lawfirmAppModalMeta');
+const lawfirmAppModalSubmit = document.getElementById('lawfirmAppModalSubmit');
+
+function openLawfirmAppModal(button) {
+    pendingLawfirmAppForm = button.closest('form');
+    if (!pendingLawfirmAppForm) return;
+
+    const action = button.dataset.action === 'reject'
+        ? 'reject'
+        : (button.dataset.action === 'remove' ? 'remove' : 'accept');
+    const lawyerName = button.dataset.name || 'this applicant';
+
+    lawfirmAppModalIcon.className = 'lf-app-confirm-icon ' + (action === 'accept' ? 'accept' : 'reject');
+    lawfirmAppModalIcon.innerHTML = action === 'accept'
+        ? '<i class="fas fa-check"></i>'
+        : (action === 'remove' ? '<i class="fas fa-user-minus"></i>' : '<i class="fas fa-times"></i>');
+    lawfirmAppModalTitle.textContent = action === 'accept'
+        ? 'Accept application?'
+        : (action === 'remove' ? 'Remove team member?' : 'Reject application?');
+    lawfirmAppModalMeta.textContent = action === 'accept'
+        ? 'You are about to accept ' + lawyerName + ' into your law firm.'
+        : (action === 'remove'
+            ? 'You are about to remove ' + lawyerName + ' from your law firm.'
+            : 'You are about to reject ' + lawyerName + '\'s application.');
+    lawfirmAppModalSubmit.className = 'lf-app-confirm-submit ' + action;
+    lawfirmAppModalSubmit.textContent = action === 'accept'
+        ? 'Accept'
+        : (action === 'remove' ? 'Remove' : 'Reject');
+    lawfirmAppModalSubmit.dataset.action = action;
+
+    lawfirmAppModal.classList.add('open');
+    lawfirmAppModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLawfirmAppModal() {
+    lawfirmAppModal.classList.remove('open');
+    lawfirmAppModal.setAttribute('aria-hidden', 'true');
+    lawfirmAppModalSubmit.disabled = false;
+    pendingLawfirmAppForm = null;
+    document.body.style.overflow = '';
+}
+
+document.querySelectorAll('.js-lawfirm-app-confirm').forEach(function(button) {
+    button.addEventListener('click', function() {
+        openLawfirmAppModal(button);
+    });
+});
+
+document.querySelectorAll('[data-app-modal-close]').forEach(function(button) {
+    button.addEventListener('click', closeLawfirmAppModal);
+});
+
+lawfirmAppModalSubmit.addEventListener('click', function() {
+    if (!pendingLawfirmAppForm) return;
+    lawfirmAppModalSubmit.disabled = true;
+    pendingLawfirmAppForm.submit();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && lawfirmAppModal.classList.contains('open')) {
+        closeLawfirmAppModal();
     }
 });
 </script>

@@ -225,6 +225,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/messages',      [MessageController::class,'index'])->name('messages');
     Route::post('/messages/send',[MessageController::class,'send'])->name('messages.send');
+    Route::put('/messages/{message}', [MessageController::class, 'update'])->name('messages.update');
+    Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
 
     Route::get('/payments', [PaymentController::class,'index'])->name('payments');
 
@@ -259,6 +261,8 @@ Route::middleware(['auth', 'lawyer'])->prefix('lawyer')->name('lawyer.')->group(
     Route::get('/messages', [LawyerMessageController::class, 'index'])->name('messages');
     
     Route::post('/messages/send', [LawyerMessageController::class, 'send'])->name('messages.send');
+    Route::put('/messages/{message}', [LawyerMessageController::class, 'update'])->name('messages.update');
+    Route::delete('/messages/{message}', [LawyerMessageController::class, 'destroy'])->name('messages.destroy');
 
     Route::get('/earnings',        [LawyerEarningsController::class, 'index'])->name('earnings');
     Route::get('/earnings/export', [LawyerEarningsController::class, 'export'])->name('earnings.export');
@@ -293,6 +297,8 @@ Route::middleware(['auth', 'lawfirm'])->prefix('lawfirm')->name('lawfirm.')->gro
     Route::get('/messages',        [LawFirmMessageController::class, 'index'])->name('messages');
     Route::post('/messages/start', [LawFirmMessageController::class, 'startConversation'])->name('messages.start');
     Route::post('/messages/send',  [LawFirmMessageController::class, 'send'])->name('messages.send');
+    Route::put('/messages/{message}', [LawFirmMessageController::class, 'update'])->name('messages.update');
+    Route::delete('/messages/{message}', [LawFirmMessageController::class, 'destroy'])->name('messages.destroy');
 
     Route::get('/profile',  [LawFirmProfileController::class, 'show'])->name('profile');
     Route::post('/profile', [LawFirmProfileController::class, 'update'])->name('profile.update');

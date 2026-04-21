@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Events\MessageSent;
+use App\Events\MessageUpdated;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\MessageDeletionService;
+use App\Services\MessageUpdateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -148,5 +151,57 @@ class MessageController extends Controller
         }
 
         return redirect()->route('messages', ['conversation' => $conv->id]);
+    }
+
+    public function destroy(Request $request, Message $message, MessageDeletionService $messageDeletionService)
+    {
+        $user = Auth::user();
+        $message->loadMissing('conversation');
+
+        if (
+            $message->sender_id !== $user->id ||
+            !$message->conversation ||
+            $message->conversation->client_id !== $user->id
+        ) {
+            abort(403);
+        }
+
+        $payload = $messageDeletionService->deleteForSender($message, $user->id);
+
+        try {
+            broadcast(new \App\Events\MessageDeleted($payload))->toOthers();
+        } catch (\Throwable $e) {
+            \Log::error('Broadcasting message deletion failed: ' . $e->getMessage());
+        }
+
+        return response()->json($payload);
+    }
+
+    public function update(Request $request, Message $message, MessageUpdateService $messageUpdateService)
+    {
+        $request->validate([
+            'body' => 'required|string|max:2000',
+        ]);
+
+        $user = Auth::user();
+        $message->loadMissing('conversation');
+
+        if (
+            $message->sender_id !== $user->id ||
+            !$message->conversation ||
+            $message->conversation->client_id !== $user->id
+        ) {
+            abort(403);
+        }
+
+        $payload = $messageUpdateService->updateForSender($message, $user->id, $request->string('body')->trim()->toString());
+
+        try {
+            broadcast(new MessageUpdated($payload))->toOthers();
+        } catch (\Throwable $e) {
+            \Log::error('Broadcasting message update failed: ' . $e->getMessage());
+        }
+
+        return response()->json($payload);
     }
 }

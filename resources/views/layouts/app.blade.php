@@ -165,7 +165,7 @@
     var messagesBadge = document.getElementById('messagesBadge');
     
     function updateMessagesBadge(count) {
-        console.log('📬 Updating messages badge to:', count);
+        console.log('Updating messages badge to:', count);
         if (messagesBadge) {
             if (count > 0) {
                 messagesBadge.textContent = count;
@@ -182,11 +182,17 @@
             updateMessagesBadge(currentCount + 1);
         }
     }
+
+    function decrementMessagesBadge(amount) {
+        if (!messagesBadge) return;
+        var currentCount = parseInt(messagesBadge.textContent) || 0;
+        updateMessagesBadge(Math.max(0, currentCount - Math.max(0, amount || 0)));
+    }
     
     // Wait for Echo to initialize, then set up global listeners
     setTimeout(function() {
         if (window.Echo) {
-            console.log('🌐 Setting up global message notifications for user:', currentUserId);
+            console.log('Setting up global message notifications for user:', currentUserId);
             
             // Get user's conversation IDs
             @php
@@ -196,19 +202,19 @@
             @endphp
             var conversationIds = @json($userConversationIds);
             
-            console.log('👥 User conversations:', conversationIds);
+            console.log('User conversations:', conversationIds);
             
             // Listen to all user's conversations for new messages
             conversationIds.forEach(function(convId) {
-                console.log('🔔 Setting up notification listener for conversation:', convId);
+                console.log('Setting up notification listener for conversation:', convId);
                 
                 window.Echo.private('conversation.' + convId)
                     .listen('.MessageSent', function(e) {
-                        console.log('🔔 Global notification - received message:', e);
+                        console.log('Global notification - received message:', e);
                         
                         // Only show notification if message is from someone else
                         if (e.sender_id !== currentUserId) {
-                            console.log('📬 New message from other user - updating badge');
+                            console.log('New message from other user - updating badge');
                             
                             // Only increment badge if we're NOT on the messages page
                             // (messages page handles its own real-time updates)
@@ -223,6 +229,11 @@
                                     });
                                 }
                             }
+                        }
+                    })
+                    .listen('.MessageDeleted', function(e) {
+                        if (!window.location.pathname.includes('/messages')) {
+                            decrementMessagesBadge(parseInt(e.deleted_unread_count || 0, 10) || 0);
                         }
                     })
                     .error(function(error) {

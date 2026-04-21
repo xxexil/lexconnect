@@ -58,6 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages/{conversationId}', [ClientMessageController::class, 'show']);
         Route::post('/messages/start', [ClientMessageController::class, 'start']);
         Route::post('/messages/send', [ClientMessageController::class, 'send']);
+        Route::put('/messages/{message}', [ClientMessageController::class, 'update']);
+        Route::delete('/messages/{message}', [ClientMessageController::class, 'destroy']);
         Route::get('/profile', [ClientProfileController::class, 'show']);
         Route::put('/profile', [ClientProfileController::class, 'update']);
         Route::post('/reviews', [ClientReviewController::class, 'store']);
@@ -74,6 +76,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages', [LawyerMessageController::class, 'index']);
         Route::get('/messages/{conversationId}', [LawyerMessageController::class, 'show']);
         Route::post('/messages/send', [LawyerMessageController::class, 'send']);
+        Route::put('/messages/{message}', [LawyerMessageController::class, 'update']);
+        Route::delete('/messages/{message}', [LawyerMessageController::class, 'destroy']);
         Route::get('/earnings', [LawyerEarningsController::class, 'index']);
         Route::get('/profile', [LawyerProfileController::class, 'show']);
         Route::put('/profile', [LawyerProfileController::class, 'update']);
@@ -100,6 +104,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages/{conversationId}', [LawFirmMessageController::class, 'show']);
         Route::post('/messages/start', [LawFirmMessageController::class, 'start']);
         Route::post('/messages/send', [LawFirmMessageController::class, 'send']);
+        Route::put('/messages/{message}', [LawFirmMessageController::class, 'update']);
+        Route::delete('/messages/{message}', [LawFirmMessageController::class, 'destroy']);
         Route::get('/profile', [LawFirmProfileController::class, 'show']);
     });
 });

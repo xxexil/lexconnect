@@ -100,11 +100,25 @@
             <div class="cons-actions">
                 <form method="POST" action="{{ route('lawyer.consultations.accept', $c->id) }}">
                     @csrf
-                    <button class="cons-btn cons-btn-accept"><i class="fas fa-check"></i> Accept</button>
+                    <button type="button"
+                        class="cons-btn cons-btn-accept js-consultation-confirm"
+                        data-action="accept"
+                        data-client="{{ $c->client->name }}"
+                        data-date="{{ $sched->format('F j, Y') }}"
+                        data-time="{{ $sched->format('g:i A') }}">
+                        <i class="fas fa-check"></i> Accept
+                    </button>
                 </form>
                 <form method="POST" action="{{ route('lawyer.consultations.decline', $c->id) }}">
                     @csrf
-                    <button class="cons-btn cons-btn-decline" onclick="return confirm('Decline this request?')"><i class="fas fa-times"></i> Decline</button>
+                    <button type="button"
+                        class="cons-btn cons-btn-decline js-consultation-confirm"
+                        data-action="decline"
+                        data-client="{{ $c->client->name }}"
+                        data-date="{{ $sched->format('F j, Y') }}"
+                        data-time="{{ $sched->format('g:i A') }}">
+                        <i class="fas fa-times"></i> Decline
+                    </button>
                 </form>
             </div>
         </div>
@@ -351,6 +365,20 @@
     @endforelse
 </div>
 
+<div class="consult-modal" id="consultActionModal" aria-hidden="true">
+    <div class="consult-modal-backdrop" data-modal-close></div>
+    <div class="consult-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="consultModalTitle">
+        <button type="button" class="consult-modal-close" data-modal-close aria-label="Close">&times;</button>
+        <div class="consult-modal-icon" id="consultModalIcon"><i class="fas fa-check"></i></div>
+        <h2 id="consultModalTitle">Confirm action</h2>
+        <div class="consult-modal-meta" id="consultModalMeta"></div>
+        <div class="consult-modal-actions">
+            <button type="button" class="consult-modal-cancel" data-modal-close>Cancel</button>
+            <button type="button" class="consult-modal-confirm" id="consultModalConfirm">Confirm</button>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 function showTab(name, btn) {
@@ -437,9 +465,100 @@ function refreshJoinButtons() {
 
 refreshJoinButtons();
 setInterval(refreshJoinButtons, 1000);
+
+const consultModal = document.getElementById('consultActionModal');
+const consultModalIcon = document.getElementById('consultModalIcon');
+const consultModalTitle = document.getElementById('consultModalTitle');
+const consultModalMeta = document.getElementById('consultModalMeta');
+const consultModalConfirm = document.getElementById('consultModalConfirm');
+let pendingConsultationForm = null;
+
+function openConsultationModal(button) {
+    const action = button.dataset.action;
+    const client = button.dataset.client || 'this client';
+    const date = button.dataset.date || '';
+    const time = button.dataset.time || '';
+    const isAccept = action === 'accept';
+
+    pendingConsultationForm = button.closest('form');
+    consultModalTitle.textContent = isAccept ? 'Accept Consultation?' : 'Decline Consultation?';
+    consultModalMeta.textContent = `${client} · ${date} ${time}`.trim();
+    consultModalIcon.innerHTML = isAccept ? '<i class="fas fa-check"></i>' : '<i class="fas fa-times"></i>';
+    consultModalIcon.className = isAccept ? 'consult-modal-icon accept' : 'consult-modal-icon decline';
+    consultModalConfirm.textContent = isAccept ? 'Accept Request' : 'Decline Request';
+    consultModalConfirm.className = isAccept ? 'consult-modal-confirm accept' : 'consult-modal-confirm decline';
+    consultModal.classList.add('open');
+    consultModal.setAttribute('aria-hidden', 'false');
+    consultModalConfirm.focus();
+}
+
+function closeConsultationModal() {
+    consultModal.classList.remove('open');
+    consultModal.setAttribute('aria-hidden', 'true');
+    pendingConsultationForm = null;
+}
+
+document.querySelectorAll('.js-consultation-confirm').forEach(function(button) {
+    button.addEventListener('click', function() {
+        openConsultationModal(button);
+    });
+});
+
+document.querySelectorAll('[data-modal-close]').forEach(function(button) {
+    button.addEventListener('click', closeConsultationModal);
+});
+
+consultModalConfirm.addEventListener('click', function() {
+    if (pendingConsultationForm) {
+        consultModalConfirm.disabled = true;
+        pendingConsultationForm.submit();
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && consultModal.classList.contains('open')) {
+        closeConsultationModal();
+    }
+});
 </script>
 
 <style>
+.consult-modal {
+    position: fixed; inset: 0; z-index: 9999; display: none; align-items: center; justify-content: center; padding: 18px;
+}
+.consult-modal.open { display: flex; }
+.consult-modal-backdrop {
+    position: absolute; inset: 0; background: rgba(15, 23, 42, .55);
+}
+.consult-modal-dialog {
+    position: relative; z-index: 1; width: min(420px, 100%); background: #fff; border-radius: 8px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .22); padding: 24px; text-align: center;
+}
+.consult-modal-close {
+    position: absolute; top: 10px; right: 12px; width: 30px; height: 30px; border: none; border-radius: 6px;
+    background: #f1f5f9; color: #475569; font-size: 1.25rem; line-height: 1; cursor: pointer;
+}
+.consult-modal-icon {
+    width: 46px; height: 46px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 14px; font-size: 1.1rem;
+}
+.consult-modal-icon.accept { background: #dcfce7; color: #16a34a; }
+.consult-modal-icon.decline { background: #fee2e2; color: #dc2626; }
+.consult-modal-dialog h2 { margin: 0 0 8px; font-size: 1.15rem; color: #0f172a; }
+.consult-modal-meta {
+    margin: 14px 0 20px; padding: 10px 12px; border-radius: 8px; background: #f8fafc; color: #334155;
+    font-size: .85rem; font-weight: 700;
+}
+.consult-modal-actions { display: flex; gap: 10px; justify-content: center; }
+.consult-modal-cancel,
+.consult-modal-confirm {
+    border: none; border-radius: 8px; padding: 10px 16px; font-size: .88rem; font-weight: 700; cursor: pointer;
+    font-family: inherit;
+}
+.consult-modal-cancel { background: #e5e7eb; color: #334155; }
+.consult-modal-confirm.accept { background: #16a34a; color: #fff; }
+.consult-modal-confirm.decline { background: #dc2626; color: #fff; }
+.consult-modal-confirm:disabled { opacity: .65; cursor: wait; }
 .cons-pagination {
     display: flex; align-items: center; justify-content: center; gap: 16px; padding: 18px 0 6px;
 }

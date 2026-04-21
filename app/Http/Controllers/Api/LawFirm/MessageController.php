@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api\LawFirm;
 
 use App\Events\MessageSent;
+use App\Events\MessageDeleted;
+use App\Events\MessageUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Services\MessageDeletionService;
+use App\Services\MessageUpdateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -155,5 +159,53 @@ class MessageController extends Controller
             'message' => $first,
             'messages' => $payload,
         ]));
+    }
+
+    public function destroy(Request $request, Message $message, MessageDeletionService $messageDeletionService)
+    {
+        $user = $request->user();
+        $message->loadMissing('conversation');
+
+        $conversation = Conversation::where('client_id', $user->id)->findOrFail($message->conversation_id);
+
+        if ($message->sender_id !== $user->id || $conversation->id !== $message->conversation_id) {
+            abort(403);
+        }
+
+        $payload = $messageDeletionService->deleteForSender($message, $user->id);
+
+        try {
+            broadcast(new MessageDeleted($payload))->toOthers();
+        } catch (\Throwable $e) {
+            \Log::error('API law firm message deletion broadcast failed: ' . $e->getMessage());
+        }
+
+        return response()->json($payload);
+    }
+
+    public function update(Request $request, Message $message, MessageUpdateService $messageUpdateService)
+    {
+        $request->validate([
+            'body' => 'required|string|max:2000',
+        ]);
+
+        $user = $request->user();
+        $message->loadMissing('conversation');
+
+        $conversation = Conversation::where('client_id', $user->id)->findOrFail($message->conversation_id);
+
+        if ($message->sender_id !== $user->id || $conversation->id !== $message->conversation_id) {
+            abort(403);
+        }
+
+        $payload = $messageUpdateService->updateForSender($message, $user->id, $request->string('body')->trim()->toString());
+
+        try {
+            broadcast(new MessageUpdated($payload))->toOthers();
+        } catch (\Throwable $e) {
+            \Log::error('API law firm message update broadcast failed: ' . $e->getMessage());
+        }
+
+        return response()->json($payload);
     }
 }
