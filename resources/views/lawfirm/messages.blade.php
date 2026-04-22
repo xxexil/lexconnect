@@ -191,7 +191,7 @@
 
                 if ($message->attachment_path) {
                     $messageGroups[$lastIndex]['attachments'][] = [
-                        'path' => asset('storage/' . $message->attachment_path),
+                        'path' => $message->attachment_url,
                         'name' => $message->attachment_name,
                         'type' => $message->attachment_type,
                     ];

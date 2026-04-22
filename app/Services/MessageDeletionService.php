@@ -34,7 +34,14 @@ class MessageDeletionService
         });
 
         if (!empty($attachmentPaths)) {
-            Storage::disk('public')->delete($attachmentPaths);
+            foreach ($attachmentPaths as $attachmentPath) {
+                if (Storage::disk(Message::ATTACHMENT_DISK)->exists($attachmentPath)) {
+                    Storage::disk(Message::ATTACHMENT_DISK)->delete($attachmentPath);
+                    continue;
+                }
+
+                Storage::disk('public')->delete($attachmentPath);
+            }
         }
 
         $latestMessage = Message::where('conversation_id', $conversationId)

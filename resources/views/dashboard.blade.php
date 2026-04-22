@@ -192,9 +192,79 @@
 .pay-right  { text-align: right; flex-shrink: 0; }
 .pay-amount { font-size: .92rem; font-weight: 700; color: #1e2d4d; }
 .pay-badge  { font-size: .7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-top: 3px; }
-.pay-badge.paid    { background: #ecfdf5; color: #059669; }
-.pay-badge.pending { background: #fff8ea; color: #d97706; }
-.pay-badge.refunded{ background: #f3f4f6; color: #6b7280; }
+.pay-badge.paid             { background: #ecfdf5; color: #059669; }
+.pay-badge.downpayment-paid { background: #eff6ff; color: #2563eb; }
+.pay-badge.pending          { background: #fff8ea; color: #d97706; }
+.pay-badge.refunded         { background: #f3f4f6; color: #6b7280; }
+
+@media (max-width: 1024px) {
+    .db-main {
+        grid-template-columns: 1fr;
+    }
+
+    .db-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .db-hero {
+        padding: 24px 20px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 18px;
+    }
+
+    .db-hero-text h1 {
+        font-size: 1.6rem;
+    }
+
+    .db-hero-badges {
+        width: 100%;
+    }
+
+    .db-hero-badge {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .db-stats,
+    .qs-form {
+        grid-template-columns: 1fr;
+    }
+
+    .db-card,
+    .db-stat-card {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+
+    .db-card-header,
+    .appt-top,
+    .pay-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .db-tabs {
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .db-tab {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .appt-btns {
+        flex-direction: column;
+    }
+
+    .pay-right {
+        text-align: left;
+    }
+}
 </style>
 
 @if(session('success'))
@@ -211,10 +281,10 @@
         <p>Here's your legal services overview for today</p>
     </div>
     <div class="db-hero-badges">
-        <div class="db-hero-badge">
+        <div class="db-hero-badge" data-this-month-spent="{{ number_format($thisMonthSpent, 0) }}">
             <span class="badge-num">₱{{ number_format($totalSpent, 0) }}</span>
-            <div class="badge-lbl">Total Spent</div>
-            <div style="font-size:.72rem;color:#059669;margin-top:4px;font-weight:600;">this month</div>
+            <div class="badge-lbl">Spent This Month</div>
+            <div style="font-size:.72rem;color:#059669;margin-top:4px;font-weight:600;">Lifetime total: &#8369;{{ number_format($totalSpent, 0) }}</div>
         </div>
     </div>
 </div>
@@ -257,7 +327,7 @@
         <div class="db-card">
             <div class="db-card-header">
                 <span class="db-card-title">My Appointments</span>
-                <a href="{{ route('consultations') }}" class="db-card-link">Book New +</a>
+                <a href="{{ route('find-lawyers') }}" class="db-card-link">Book New +</a>
             </div>
 
             <div class="db-tabs">
@@ -286,7 +356,7 @@
                                 <div class="appt-specialty">{{ optional($c->lawyer->lawyerProfile)->specialty ?? 'Attorney at Law' }}</div>
                             </div>
                         </div>
-                        <span class="appt-status-badge upcoming"><span class="dot"></span> Upcoming</s  pan>
+                        <span class="appt-status-badge upcoming"><span class="dot"></span> Upcoming</span>
                     </div>
                     <div class="appt-meta">
                         <span><i class="fas fa-calendar"></i> {{ $scheduled->format('m/d/Y') }}</span>
@@ -453,27 +523,18 @@
                         <label>Specialty</label>
                         <select name="specialty">
                             <option value="">All Specialties</option>
-                            <option>Corporate Law</option>
-                            <option>Family Law</option>
-                            <option>Criminal Defense</option>
-                            <option>Immigration Law</option>
-                            <option>Real Estate</option>
-                            <option>Intellectual Property</option>
-                            <option>Tax Law</option>
-                            <option>Labor Law</option>
-                            <option>Civil Litigation</option>
+                            @foreach($quickSearchSpecialties as $specialty)
+                            <option value="{{ $specialty }}">{{ $specialty }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="qs-field">
                         <label>Location</label>
-                        <select name="search">
+                        <select name="location">
                             <option value="">All Locations</option>
-                            <option>Manila</option>
-                            <option>Cebu</option>
-                            <option>Davao</option>
-                            <option>Quezon City</option>
-                            <option>Makati</option>
-                            <option>Pasig</option>
+                            @foreach($quickSearchLocations as $location)
+                            <option value="{{ $location }}">{{ $location }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -520,7 +581,7 @@
                             'icon'  => 'pay',
                             'fa'    => 'credit-card',
                             'title' => 'Payment processed',
-                            'desc'  => 'Payment of &#8369;'.number_format($p->amount,0).' for consultation with '.$p->lawyer->name.' was successful.',
+                            'desc'  => 'Payment of PHP '.number_format($p->amount, 0).' for consultation with '.$p->lawyer->name.' was successful.',
                             'time'  => $p->created_at->diffForHumans(),
                         ]);
                     } elseif ($p->status === 'pending') {
@@ -560,6 +621,16 @@
                 <a href="{{ route('payments') }}" class="db-card-link">View All &rarr;</a>
             </div>
             @forelse($recentPayments as $p)
+            @php
+                $paymentStatusLabels = [
+                    'paid' => 'Paid',
+                    'downpayment_paid' => 'Downpayment Paid',
+                    'pending' => 'Pending',
+                    'refunded' => 'Refunded',
+                ];
+                $paymentStatusLabel = $paymentStatusLabels[$p->status] ?? ucwords(str_replace('_', ' ', $p->status));
+                $paymentBadgeClass = str_replace('_', '-', $p->status);
+            @endphp
             <div class="pay-item">
                 <div class="pay-icon"><i class="fas fa-credit-card"></i></div>
                 <div class="pay-info">
@@ -568,7 +639,7 @@
                 </div>
                 <div class="pay-right">
                     <div class="pay-amount">&#8369;{{ number_format($p->amount, 0) }}</div>
-                    <span class="pay-badge {{ $p->status }}">{{ ucfirst($p->status) }}</span>
+                    <span class="pay-badge {{ $paymentBadgeClass }}">{{ $paymentStatusLabel }}</span>
                 </div>
             </div>
             @empty
@@ -581,6 +652,15 @@
 </div>{{-- end db-main --}}
 
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+    var heroBadge = document.querySelector('.db-hero-badge[data-this-month-spent]');
+    var heroBadgeValue = heroBadge ? heroBadge.querySelector('.badge-num') : null;
+
+    if (heroBadge && heroBadgeValue) {
+        heroBadgeValue.innerHTML = '&#8369;' + heroBadge.dataset.thisMonthSpent;
+    }
+});
+
 function dbTab(name, el) {
     ['upcoming','completed','cancelled','expired'].forEach(function(t) {
         document.getElementById('dbt-'+t).style.display = t === name ? '' : 'none';
@@ -591,4 +671,3 @@ function dbTab(name, el) {
 </script>
 
 @endsection
-

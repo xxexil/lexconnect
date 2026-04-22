@@ -108,6 +108,33 @@
             padding: 5px 12px; border-radius: 20px; letter-spacing: .3px;
         }
         .ad-content { padding: 32px; max-width: 1300px; }
+
+        @media (max-width: 900px) {
+            body {
+                display: block;
+            }
+
+            .ad-sidebar {
+                position: static;
+                width: 100%;
+                min-width: 0;
+                height: auto;
+            }
+
+            .ad-main {
+                margin-left: 0;
+            }
+
+            .ad-topbar {
+                padding: 14px 20px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .ad-content {
+                padding: 22px 20px;
+            }
+        }
     </style>
 </head>
 <body>

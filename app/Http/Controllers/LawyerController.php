@@ -32,15 +32,19 @@ class LawyerController extends Controller
     }
 
     public function index(Request $request) {
-        $query = LawyerProfile::with(['user', 'nextConsultation', 'upcomingConsultations']);
+        $query = LawyerProfile::with(['user', 'nextConsultation', 'upcomingConsultations'])
+            ->whereHas('user');
 
         if ($request->filled('specialty')) {
             $query->where('specialty', $request->specialty);
         }
+        if ($request->filled('location')) {
+            $query->where('location', $request->location);
+        }
         if ($request->filled('min_rate')) {
             $query->where('hourly_rate', '>=', $request->min_rate);
         }
-        if ($request->filled('max_rate') && $request->max_rate < 1000) {
+        if ($request->filled('max_rate')) {
             $query->where('hourly_rate', '<=', $request->max_rate);
         }
         if ($request->filled('min_experience')) {
@@ -54,7 +58,8 @@ class LawyerController extends Controller
             $query->where(function($q) use ($search) {
                 $q->whereHas('user', fn($u) => $u->where('name','like',"%$search%"))
                   ->orWhere('specialty','like',"%$search%")
-                  ->orWhere('firm','like',"%$search%");
+                  ->orWhere('firm','like',"%$search%")
+                  ->orWhere('location','like',"%$search%");
             });
         }
 
@@ -84,7 +89,19 @@ class LawyerController extends Controller
         } else {
             $lawyers = $query->paginate(9)->withQueryString();
         }
-        $specialties = LawyerProfile::distinct()->orderBy('specialty')->pluck('specialty');
+        $specialties = LawyerProfile::query()
+            ->whereNotNull('specialty')
+            ->where('specialty', '!=', '')
+            ->distinct()
+            ->orderBy('specialty')
+            ->pluck('specialty');
+
+        $locations = LawyerProfile::query()
+            ->whereNotNull('location')
+            ->where('location', '!=', '')
+            ->distinct()
+            ->orderBy('location')
+            ->pluck('location');
 
         // Get blocked dates for all displayed lawyers
         $lawyerIds = $lawyers->pluck('user_id')->toArray();
@@ -138,6 +155,6 @@ class LawyerController extends Controller
             $lawyerSlots[$lp->user_id] = $freeSlots;
         }
 
-        return view('find-lawyers', compact('lawyers', 'specialties', 'blockedDates', 'lawyerSlots'));
+        return view('find-lawyers', compact('lawyers', 'specialties', 'locations', 'blockedDates', 'lawyerSlots'));
     }
 }

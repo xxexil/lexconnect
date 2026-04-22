@@ -21,37 +21,110 @@ class ConsultationController extends Controller
 
         Consultation::expireOverdue('client_id', $user->id);
 
-        $consultations = Consultation::with(['lawyer','lawyer.lawyerProfile','review','payment','payments','balancePayment'])
+        $baseQuery = Consultation::with(['lawyer', 'lawyer.lawyerProfile', 'review', 'payment', 'payments', 'balancePayment'])
             ->where('client_id', $user->id)
-            ->where(function($q) {
-                $q->where('status', 'pending')
-                  ->whereHas('payment', function($q2) {
-                      $q2->where('status', 'downpayment_paid');
-                  })
-                  ->orWhereIn('status', ['upcoming','completed','cancelled','expired']);
+            ->where(function ($q) {
+                $q->where(function ($pendingQuery) {
+                    $pendingQuery->where('status', 'pending')
+                        ->whereHas('payment', function ($paymentQuery) {
+                            $paymentQuery->where('status', 'downpayment_paid');
+                        });
+                })->orWhereIn('status', ['upcoming', 'completed', 'cancelled', 'expired']);
+            });
+
+        $pendingConsultations = (clone $baseQuery)
+            ->where('status', 'pending')
+            ->whereHas('payment', function ($q) {
+                $q->where('status', 'downpayment_paid');
             })
-            ->orderByRaw("FIELD(status,'pending','upcoming','completed','cancelled','expired')")
             ->orderBy('scheduled_at', 'desc')
             ->get();
-        $activeConsultation = $consultations->where('status','upcoming')->first();
-        return view('consultations', compact('consultations','activeConsultation'));
+
+        $upcomingConsultations = (clone $baseQuery)
+            ->where('status', 'upcoming')
+            ->orderBy('scheduled_at', 'desc')
+            ->get();
+
+        $completedConsultations = (clone $baseQuery)
+            ->where('status', 'completed')
+            ->orderByRaw("
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM payments
+                        WHERE payments.consultation_id = consultations.id
+                          AND payments.type = 'balance'
+                          AND payments.status = 'pending'
+                    ) THEN 0
+                    ELSE 1
+                END
+            ")
+            ->orderBy('scheduled_at', 'desc')
+            ->paginate(5, ['*'], 'completed_page')
+            ->withQueryString();
+
+        $cancelledConsultations = (clone $baseQuery)
+            ->where('status', 'cancelled')
+            ->orderBy('scheduled_at', 'desc')
+            ->paginate(5, ['*'], 'cancelled_page')
+            ->withQueryString();
+
+        $expiredConsultations = (clone $baseQuery)
+            ->where('status', 'expired')
+            ->orderBy('scheduled_at', 'desc')
+            ->paginate(5, ['*'], 'expired_page')
+            ->withQueryString();
+
+        $consultationSummary = [
+            'pending' => $pendingConsultations->count(),
+            'upcoming' => $upcomingConsultations->count(),
+            'completed' => $completedConsultations->total(),
+            'cancelled' => $cancelledConsultations->total(),
+            'expired' => $expiredConsultations->total(),
+        ];
+
+        $hasConsultations = $pendingConsultations->isNotEmpty()
+            || $upcomingConsultations->isNotEmpty()
+            || $completedConsultations->total() > 0
+            || $cancelledConsultations->total() > 0
+            || $expiredConsultations->total() > 0;
+
+        $activeConsultation = $upcomingConsultations->first();
+
+        return view('consultations', compact(
+            'pendingConsultations',
+            'upcomingConsultations',
+            'completedConsultations',
+            'cancelledConsultations',
+            'expiredConsultations',
+            'consultationSummary',
+            'hasConsultations',
+            'activeConsultation'
+        ));
     }
 
     public function create(Request $request, User $lawyer)
     {
-        $lawyer->load([
-            'lawyerProfile.upcomingConsultations',
-        ]);
+        $lawyer->load('lawyerProfile');
 
         abort_unless($lawyer->isLawyer() && $lawyer->lawyerProfile, 404);
 
         $profile = $lawyer->lawyerProfile;
+        $bookingWindowStart = today()->startOfDay();
+        $bookingWindowEnd = now()->copy()->addDays(14);
         $blockedDates = LawyerBlockedDate::where('lawyer_id', $lawyer->id)
             ->where('blocked_date', '>=', today())
             ->orderBy('blocked_date')
             ->get();
 
-        $bookedSlots = $profile->upcomingConsultations->map(fn ($consultation) => [
+        $activeBookings = Consultation::where('lawyer_id', $lawyer->id)
+            ->whereIn('status', ['pending', 'upcoming'])
+            ->where('scheduled_at', '>=', $bookingWindowStart)
+            ->where('scheduled_at', '<=', $bookingWindowEnd)
+            ->orderBy('scheduled_at')
+            ->get();
+
+        $bookedSlots = $activeBookings->map(fn ($consultation) => [
             'start' => Carbon::parse($consultation->scheduled_at)->toIso8601String(),
             'end' => Carbon::parse($consultation->scheduled_at)
                 ->addMinutes($consultation->duration_minutes ?? 60)
@@ -81,7 +154,7 @@ class ConsultationController extends Controller
 
         $quickSlots = [];
         $workHours = [9, 10, 11, 13, 14, 15, 16, 17];
-        $bookedWindows = $profile->upcomingConsultations->map(fn ($consultation) => [
+        $bookedWindows = $activeBookings->map(fn ($consultation) => [
             'start' => Carbon::parse($consultation->scheduled_at),
             'end' => Carbon::parse($consultation->scheduled_at)->addMinutes($consultation->duration_minutes ?? 60),
         ]);
@@ -172,9 +245,6 @@ class ConsultationController extends Controller
 
         $hasConflict = Consultation::where('lawyer_id', $request->lawyer_id)
             ->whereIn('status', ['pending', 'upcoming'])
-            ->whereHas('payment', function ($query) {
-                $query->where('status', 'downpayment_paid');
-            })
             ->get()
             ->contains(function ($consultation) use ($scheduledAt, $endsAt) {
                 $existingStart = Carbon::parse($consultation->scheduled_at);

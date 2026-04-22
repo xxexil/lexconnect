@@ -56,7 +56,10 @@ class Consultation extends Model
 
     public function videoJoinUrl(): string
     {
-        return 'https://meet.jit.si/' . rawurlencode($this->videoRoomName());
+        $domain = trim((string) config('services.jitsi.domain', 'meet.jit.si'));
+        $domain = preg_replace('#^https?://#', '', $domain);
+
+        return 'https://' . trim($domain, '/') . '/' . rawurlencode($this->videoRoomName());
     }
 
     public function toApiArray(?int $viewerId = null): array

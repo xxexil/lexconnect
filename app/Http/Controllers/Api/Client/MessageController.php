@@ -32,6 +32,7 @@ class MessageController extends Controller
                 $unread = $c->messages()->whereNull('read_at')->where('sender_id', '!=', $user->id)->count();
                 return [
                     'id'          => $c->id,
+                    'call_room_name' => $c->callRoomName(),
                     'other_user'  => ['id' => $other->id, 'name' => $other->name, 'avatar_url' => $other->avatar_url],
                     'last_message'=> $c->latestMessage?->body ?: ($c->latestMessage?->attachment_name ? 'Attachment' : null),
                     'last_attachment_type' => $c->latestMessage?->attachment_type,
@@ -63,6 +64,7 @@ class MessageController extends Controller
 
         return response()->json([
             'conversation_id' => $conversation->id,
+            'call_room_name'  => $conversation->callRoomName(),
             'other_user'      => ['id' => $other->id, 'name' => $other->name, 'avatar_url' => $other->avatar_url],
             'messages'        => $messages,
         ]);
@@ -83,13 +85,10 @@ class MessageController extends Controller
 
     public function send(Request $request)
     {
-        $request->validate([
-            'conversation_id' => 'required|exists:conversations,id',
-            'body'            => 'nullable|string|max:5000',
-            'attachment'      => 'nullable|file|max:20480|mimes:jpeg,png,jpg,gif,webp,heic,heif,pdf,doc,docx,txt,mp3,wav,m4a,aac,ogg,oga,webm',
-            'attachments'     => 'nullable|array',
-            'attachments.*'   => 'file|max:20480|mimes:jpeg,png,jpg,gif,webp,heic,heif,pdf,doc,docx,txt,mp3,wav,m4a,aac,ogg,oga,webm',
-        ]);
+        $request->validate(
+            array_merge(['conversation_id' => 'required|exists:conversations,id'], Message::messageValidationRules()),
+            Message::messageValidationMessages()
+        );
 
         $user = $request->user();
         $conversation = Conversation::where(function ($q) use ($user) {
@@ -118,13 +117,10 @@ class MessageController extends Controller
             ]));
         } else {
             foreach ($attachments as $index => $file) {
-                $path = $file->store('message-attachments', 'public');
                 $messages->push($conversation->messages()->create([
                     'sender_id'       => $user->id,
                     'body'            => $index === 0 ? ($request->body ?? '') : '',
-                    'attachment_path' => $path,
-                    'attachment_name' => $file->getClientOriginalName(),
-                    'attachment_type' => Message::attachmentTypeForMime($file->getMimeType()),
+                    ...Message::storeUploadedAttachment($file),
                     'batch_uuid'      => $batchUuid,
                 ]));
             }
@@ -147,6 +143,31 @@ class MessageController extends Controller
             'message' => $first,
             'messages' => $payload,
         ]));
+    }
+
+    public function sendCallInvite(Request $request, int $conversationId)
+    {
+        $request->validate([
+            'title' => 'nullable|string|max:120',
+        ]);
+
+        $user = $request->user();
+        $conversation = Conversation::where(function ($query) use ($user) {
+            $query->where('client_id', $user->id)
+                ->orWhere('lawyer_id', $user->id);
+        })->findOrFail($conversationId);
+
+        $message = $conversation->messages()->create([
+            'sender_id' => $user->id,
+            'body' => $conversation->directCallInvitePayload($user->name, $request->input('title', 'Video Call')),
+        ]);
+
+        broadcast(new MessageSent($message->loadMissing('sender')))->toOthers();
+
+        return response()->json([
+            'room_name' => $conversation->callRoomName(),
+            'invite' => $message->toApiArray($user->id),
+        ], 201);
     }
 
     public function destroy(Request $request, Message $message, MessageDeletionService $messageDeletionService)

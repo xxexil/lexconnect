@@ -56,13 +56,15 @@
 .cb-slot { border-radius:10px; padding:8px 12px; font-size:.82rem; font-weight:700; border:1.5px solid; }
 .cb-slot.available { background:#ecfdf3; border-color:#86efac; color:#15803d; cursor:pointer; }
 .cb-slot.available:hover, .cb-slot.available.active { background:#166534; border-color:#166534; color:#fff; }
-.cb-slot.booked { background:#fff5f5; border-color:#fca5a5; color:#dc2626; }
+.cb-slot.booked { background:#fff7ed; border-color:#fdba74; color:#c2410c; }
+.cb-slot.blocked { background:#fff5f5; border-color:#fca5a5; color:#dc2626; }
 .cb-slot.past { background:#f8fafc; border-color:#e5e7eb; color:#9ca3af; }
 .cb-legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:14px; color:#6b7280; font-size:.78rem; }
 .cb-legend span { display:inline-flex; align-items:center; gap:6px; }
 .cb-legend i { width:10px; height:10px; border-radius:3px; display:inline-block; }
 .cb-legend .free { background:#ecfdf3; border:1px solid #86efac; }
 .cb-legend .busy { background:#fef2f2; border:1px solid #fecaca; }
+.cb-legend .taken { background:#fff7ed; border:1px solid #fdba74; }
 .cb-legend .booked { background:#f59e0b; border-radius:999px; }
 .cb-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
 .cb-field.full { grid-column:1 / -1; }
@@ -215,8 +217,9 @@
 
             <div class="cb-legend">
                 <span><i class="free"></i> Available</span>
-                <span><i class="busy"></i> Blocked</span>
-                <span><i class="booked"></i> Has bookings</span>
+                <span><i class="busy"></i> Blocked date</span>
+                <span><i class="taken"></i> Already booked</span>
+                <span><i class="booked"></i> Date has bookings</span>
             </div>
         </div>
 
@@ -462,7 +465,7 @@ document.addEventListener('DOMContentLoaded', function () {
         slotsPanel.style.display = 'block';
 
         if (blockedRanges.some(function (range) { return range.isAllDay; })) {
-            slotsGrid.innerHTML = '<div class="cb-slot booked">This lawyer is unavailable on this date.</div>';
+            slotsGrid.innerHTML = '<div class="cb-slot blocked">This lawyer is unavailable on this date.</div>';
             return;
         }
 
@@ -481,8 +484,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (bookedRanges.some(function (range) { return slotStart < range.end && slotEnd > range.start; })) {
                 button.classList.add('booked');
                 button.disabled = true;
+                button.title = 'Already booked';
             } else if (blockedRanges.some(function (range) { return !range.isAllDay && slotStart < range.end && slotEnd > range.start; })) {
-                button.classList.add('booked');
+                button.classList.add('blocked');
                 button.disabled = true;
                 button.title = 'Blocked by lawyer availability';
             } else {

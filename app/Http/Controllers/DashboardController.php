@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Consultation;
-use App\Models\Conversation;
+use App\Models\LawyerProfile;
+use App\Models\Message;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
 
@@ -56,16 +57,32 @@ class DashboardController extends Controller
         $thisMonthSpent = Payment::where('client_id', $user->id)->where('status','paid')
             ->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->sum('amount');
 
-        $unreadMessages = 0;
-        $conversations = Conversation::where('client_id', $user->id)->with('messages')->get();
-        foreach ($conversations as $conv) {
-            $unreadMessages += $conv->messages->whereNull('read_at')->where('sender_id', '!=', $user->id)->count();
-        }
+        $unreadMessages = Message::whereNull('read_at')
+            ->where('sender_id', '!=', $user->id)
+            ->whereHas('conversation', function ($query) use ($user) {
+                $query->where('client_id', $user->id);
+            })
+            ->count();
+
+        $quickSearchSpecialties = LawyerProfile::query()
+            ->whereNotNull('specialty')
+            ->where('specialty', '!=', '')
+            ->distinct()
+            ->orderBy('specialty')
+            ->pluck('specialty');
+
+        $quickSearchLocations = LawyerProfile::query()
+            ->whereNotNull('location')
+            ->where('location', '!=', '')
+            ->distinct()
+            ->orderBy('location')
+            ->pluck('location');
 
         return view('dashboard', compact(
             'upcomingConsultations','completedConsultations','cancelledConsultations','expiredConsultations',
             'recentPayments','totalConsultations','upcomingCount','totalSpent',
-            'unreadMessages','thisMonthConsultations','thisMonthSpent'
+            'unreadMessages','thisMonthConsultations','thisMonthSpent',
+            'quickSearchSpecialties','quickSearchLocations'
         ));
     }
 }

@@ -76,13 +76,10 @@ class LawyerMessageController extends Controller
 
     public function send(Request $request)
     {
-        $request->validate([
-            'conversation_id' => 'required|exists:conversations,id',
-            'body'            => 'nullable|string|max:2000',
-            'attachment'      => 'nullable|file|max:20480|mimes:jpeg,png,jpg,gif,webp,heic,heif,pdf,doc,docx,txt,mp3,wav,m4a,aac,ogg,oga,webm',
-            'attachments'     => 'nullable|array',
-            'attachments.*'   => 'file|max:20480|mimes:jpeg,png,jpg,gif,webp,heic,heif,pdf,doc,docx,txt,mp3,wav,m4a,aac,ogg,oga,webm',
-        ]);
+        $request->validate(
+            array_merge(['conversation_id' => 'required|exists:conversations,id'], Message::messageValidationRules(2000)),
+            Message::messageValidationMessages()
+        );
 
         $conv = Conversation::findOrFail($request->conversation_id);
         $user = Auth::user();
@@ -130,14 +127,11 @@ class LawyerMessageController extends Controller
             ]));
         } else {
             foreach ($attachments as $index => $file) {
-                $path = $file->store('message-attachments', 'public');
                 $messages->push(Message::create([
                     'conversation_id' => $conv->id,
                     'sender_id' => Auth::id(),
                     'body' => $index === 0 ? ($request->body ?? '') : '',
-                    'attachment_path' => $path,
-                    'attachment_name' => $file->getClientOriginalName(),
-                    'attachment_type' => Message::attachmentTypeForMime($file->getMimeType()),
+                    ...Message::storeUploadedAttachment($file),
                     'batch_uuid' => $batchUuid,
                 ]));
             }
@@ -153,21 +147,7 @@ class LawyerMessageController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'messages' => $messages->map(function (Message $message) {
-                    $message->load('sender');
-
-                    return [
-                        'id' => $message->id,
-                        'sender_id' => $message->sender_id,
-                        'body' => $message->body,
-                        'time' => $message->created_at->format('g:i A'),
-                        'attachment_url' => $message->attachment_url,
-                        'attachment_path' => $message->attachment_url,
-                        'attachment_name' => $message->attachment_name,
-                        'attachment_type' => $message->attachment_type,
-                        'batch_uuid' => $message->batch_uuid,
-                    ];
-                })->values(),
+                'messages' => $messages->map(fn (Message $message) => $message->load('sender')->toApiArray($user->id))->values(),
             ]);
         }
 

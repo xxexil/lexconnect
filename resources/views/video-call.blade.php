@@ -188,7 +188,10 @@
             The call opens in a separate window — keep this page open so you can end the session when done.
         </div>
 
-        @php $jitsiUrl = 'https://meet.jit.si/' . rawurlencode($roomName); @endphp
+        @php
+            $jitsiDomain = preg_replace('#^https?://#', '', (string) config('services.jitsi.domain', 'meet.jit.si'));
+            $jitsiUrl = 'https://' . trim($jitsiDomain, '/') . '/' . rawurlencode($roomName);
+        @endphp
 
         <div class="vc-meta-grid">
             <div class="vc-meta-box">

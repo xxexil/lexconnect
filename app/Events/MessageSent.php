@@ -44,19 +44,8 @@ class MessageSent implements ShouldBroadcastNow
         \Log::info('MessageSent broadcastWith called');
         
         try {
-            $data = [
-                'id'              => $this->message->id,
-                'conversation_id' => $this->message->conversation_id,
-                'sender_id'       => $this->message->sender_id,
-                'body'            => e($this->message->body),
-                'time'            => $this->message->created_at->format('g:i A'),
-                'sender_name'     => $this->message->sender->name,
-                'attachment_url'  => $this->message->attachment_url,
-                'attachment_path' => $this->message->attachment_url,
-                'attachment_name' => $this->message->attachment_name,
-                'attachment_type' => $this->message->attachment_type,
-                'batch_uuid'      => $this->message->batch_uuid,
-            ];
+            $data = $this->message->toApiArray();
+            $data['body'] = e((string) ($data['body'] ?? ''));
             
             \Log::info('MessageSent data prepared: ' . json_encode($data));
             return $data;

@@ -123,6 +123,54 @@
 .msg-lightbox-nav.prev { left: 24px; }
 .msg-lightbox-nav.next { right: 24px; }
 .msg-lightbox-nav[disabled] { opacity: .35; cursor: default; }
+
+@media (max-width: 900px) {
+    .msg-layout {
+        height: auto;
+        min-height: calc(100vh - 90px);
+        flex-direction: column;
+    }
+
+    .msg-sidebar {
+        width: 100%;
+        max-height: 42vh;
+        border-right: none;
+        border-bottom: 1px solid #f0f2f5;
+    }
+
+    .msg-chat {
+        min-height: 58vh;
+    }
+}
+
+@media (max-width: 640px) {
+    .msg-chat-header,
+    .msg-form-wrap {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .msg-bubbles {
+        padding: 16px 14px;
+    }
+
+    .msg-bubble-wrap.mine {
+        padding-left: 18px;
+    }
+
+    .msg-bubble {
+        max-width: 82%;
+    }
+
+    .msg-bubble-actions {
+        left: -28px;
+    }
+
+    .msg-menu-btn {
+        width: 26px;
+        height: 26px;
+    }
+}
 </style>
 
 <div class="msg-layout">
@@ -189,7 +237,7 @@
 
                 if ($message->attachment_path) {
                     $messageGroups[$lastIndex]['attachments'][] = [
-                        'path' => asset('storage/' . $message->attachment_path),
+                        'path' => $message->attachment_url,
                         'name' => $message->attachment_name,
                         'type' => $message->attachment_type,
                     ];

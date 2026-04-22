@@ -86,6 +86,9 @@ class ConsultationController extends Controller
 
         return response()->json([
             'consultation' => $consultation->toApiArray($request->user()->id),
+            'jitsi_domain' => config('services.jitsi.domain'),
+            'jitsi_app_id' => config('services.jitsi.app_id'),
+            'jitsi_room_prefix' => config('services.jitsi.room_prefix', 'lexconnect'),
             'room_name' => $consultation->videoRoomName(),
             'join_url' => $consultation->videoJoinUrl(),
             'display_name' => $request->user()->name,

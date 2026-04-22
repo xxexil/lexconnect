@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
+use App\Http\Controllers\Api\MessageAttachmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Client\DashboardController as ClientDashboard;
 use App\Http\Controllers\Api\Client\LawyerController as ClientLawyerController;
@@ -39,6 +40,8 @@ Route::prefix('auth')->group(function () {
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/messages/{message}/attachment', [MessageAttachmentController::class, 'show'])
+        ->name('api.messages.attachments.show');
 
     // Public lawyer browsing (accessible to all authenticated users)
     Route::get('/lawyers', [ClientLawyerController::class, 'index']);
@@ -58,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages/{conversationId}', [ClientMessageController::class, 'show']);
         Route::post('/messages/start', [ClientMessageController::class, 'start']);
         Route::post('/messages/send', [ClientMessageController::class, 'send']);
+        Route::post('/messages/{conversationId}/call-invite', [ClientMessageController::class, 'sendCallInvite']);
         Route::put('/messages/{message}', [ClientMessageController::class, 'update']);
         Route::delete('/messages/{message}', [ClientMessageController::class, 'destroy']);
         Route::get('/profile', [ClientProfileController::class, 'show']);
@@ -76,6 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages', [LawyerMessageController::class, 'index']);
         Route::get('/messages/{conversationId}', [LawyerMessageController::class, 'show']);
         Route::post('/messages/send', [LawyerMessageController::class, 'send']);
+        Route::post('/messages/{conversationId}/call-invite', [LawyerMessageController::class, 'sendCallInvite']);
         Route::put('/messages/{message}', [LawyerMessageController::class, 'update']);
         Route::delete('/messages/{message}', [LawyerMessageController::class, 'destroy']);
         Route::get('/earnings', [LawyerEarningsController::class, 'index']);
@@ -104,6 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages/{conversationId}', [LawFirmMessageController::class, 'show']);
         Route::post('/messages/start', [LawFirmMessageController::class, 'start']);
         Route::post('/messages/send', [LawFirmMessageController::class, 'send']);
+        Route::post('/messages/{conversationId}/call-invite', [LawFirmMessageController::class, 'sendCallInvite']);
         Route::put('/messages/{message}', [LawFirmMessageController::class, 'update']);
         Route::delete('/messages/{message}', [LawFirmMessageController::class, 'destroy']);
         Route::get('/profile', [LawFirmProfileController::class, 'show']);

@@ -39,6 +39,12 @@ return [
         'payment_return_url' => env('MOBILE_PAYMENT_RETURN_URL', 'lexconnect://payment-return'),
     ],
 
+    'jitsi' => [
+        'domain' => env('JITSI_DOMAIN', 'meet.jit.si'),
+        'app_id' => env('JITSI_APP_ID'),
+        'room_prefix' => env('JITSI_ROOM_PREFIX', 'lexconnect'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

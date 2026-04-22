@@ -7,6 +7,110 @@
 .mc-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
 .mc-title   { font-size:1.6rem; font-weight:700; color:#1e2d4d; }
 .mc-sub     { font-size:.88rem; color:#6b7280; margin-top:3px; }
+.mc-summary {
+    display:grid;
+    grid-template-columns:repeat(5, minmax(0, 1fr));
+    gap:14px;
+    margin-bottom:28px;
+}
+.mc-summary-card {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:#fff;
+    border:1px solid #e7edf6;
+    border-radius:16px;
+    padding:16px 18px;
+    box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.mc-summary-icon {
+    width:38px;
+    height:38px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1rem;
+    flex-shrink:0;
+}
+.mc-summary-icon.pending { background:#fff8ea; color:#d97706; }
+.mc-summary-icon.upcoming { background:#eff6ff; color:#2563eb; }
+.mc-summary-icon.completed { background:#ecfdf5; color:#16a34a; }
+.mc-summary-icon.cancelled { background:#fef2f2; color:#dc2626; }
+.mc-summary-icon.expired { background:#f3f4f6; color:#6b7280; }
+.mc-summary-metric {
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    min-width:0;
+}
+.mc-summary-value {
+    font-size:1.9rem;
+    line-height:1;
+    font-weight:800;
+    color:#1e2d4d;
+}
+.mc-summary-label {
+    font-size:.82rem;
+    color:#667085;
+    font-weight:500;
+}
+.mc-status-tabs {
+    display:flex;
+    align-items:center;
+    gap:4px;
+    flex-wrap:wrap;
+    padding:6px;
+    margin:-8px 0 28px;
+    background:#fff;
+    border:1px solid #e7edf6;
+    border-radius:14px;
+    box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.mc-status-tab {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    min-height:42px;
+    padding:0 16px;
+    border:none;
+    border-radius:10px;
+    background:transparent;
+    color:#52627c;
+    font-size:.95rem;
+    font-weight:700;
+    font-family:inherit;
+    cursor:pointer;
+    transition:background .2s, color .2s, box-shadow .2s;
+    white-space:nowrap;
+}
+.mc-status-tab:hover {
+    background:#f4f7fc;
+    color:#1e2d4d;
+}
+.mc-status-tab.is-active {
+    background:#1e2d4d;
+    color:#fff;
+    box-shadow:0 6px 18px rgba(30,45,77,.12);
+}
+.mc-status-tab-badge {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:22px;
+    height:22px;
+    padding:0 6px;
+    border-radius:999px;
+    background:#2563eb;
+    color:#fff;
+    font-size:.74rem;
+    font-weight:800;
+    line-height:1;
+}
+.mc-status-tab.is-active .mc-status-tab-badge {
+    background:rgba(255,255,255,.18);
+}
 .mc-book-btn {
     display:inline-flex; align-items:center; gap:7px;
     padding:10px 22px; background:#1e2d4d; color:#fff;
@@ -66,6 +170,7 @@
 .mc-badge.upcoming  { background:#eff8ff; color:#2563eb; }
 .mc-badge.pending   { background:#fff8ea; color:#d97706; }
 .mc-badge.completed { background:#ecfdf5; color:#059669; }
+.mc-badge.expired   { background:#f3f4f6; color:#6b7280; }
 
 /* review modal */
 .rv-overlay {
@@ -139,6 +244,74 @@
 .mc-empty i { font-size:3rem; display:block; margin-bottom:16px; opacity:.35; }
 .mc-empty h3 { font-size:1.1rem; font-weight:700; color:#374151; margin-bottom:8px; }
 .mc-empty p  { font-size:.9rem; margin-bottom:20px; }
+.mc-pagination { margin:10px 0 24px; }
+.mc-pagination .pagination { justify-content:center; margin-bottom:0; }
+.mc-panel { display:none; }
+.mc-panel.is-active { display:block; }
+
+@media (max-width: 1180px) {
+    .mc-summary {
+        grid-template-columns:repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 840px) {
+    .mc-header {
+        flex-direction:column;
+        align-items:flex-start;
+        gap:14px;
+    }
+
+    .mc-summary {
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+
+    .mc-status-tabs {
+        gap:6px;
+        padding:6px;
+    }
+
+    .mc-status-tab {
+        flex:1 1 calc(50% - 8px);
+        min-width:128px;
+    }
+
+    .mc-card {
+        flex-direction:column;
+    }
+
+    .mc-right {
+        width:100%;
+        align-items:flex-start;
+    }
+}
+
+@media (max-width: 560px) {
+    .mc-summary {
+        grid-template-columns:1fr;
+    }
+
+    .mc-summary-card {
+        padding:14px 16px;
+    }
+
+    .mc-summary-value {
+        font-size:1.6rem;
+    }
+
+    .mc-status-tabs {
+        display:grid;
+        grid-template-columns:1fr;
+    }
+
+    .mc-status-tab {
+        width:100%;
+        justify-content:space-between;
+        padding:0 14px;
+        min-height:40px;
+        font-size:.92rem;
+    }
+}
 </style>
 
 {{-- Page header --}}
@@ -152,23 +325,114 @@
     </a>
 </div>
 
+@php
+    $activePanel = request('section');
+
+    if (!$activePanel) {
+        if (request()->has('expired_page')) {
+            $activePanel = 'expired';
+        } elseif (request()->has('cancelled_page')) {
+            $activePanel = 'cancelled';
+        } elseif (request()->has('completed_page')) {
+            $activePanel = 'completed';
+        } elseif ($pendingConsultations->isNotEmpty()) {
+            $activePanel = 'pending';
+        } elseif ($upcomingConsultations->isNotEmpty()) {
+            $activePanel = 'upcoming';
+        } elseif ($completedConsultations->total() > 0) {
+            $activePanel = 'completed';
+        } elseif ($expiredConsultations->total() > 0) {
+            $activePanel = 'expired';
+        } elseif ($cancelledConsultations->total() > 0) {
+            $activePanel = 'cancelled';
+        } else {
+            $activePanel = 'pending';
+        }
+    }
+@endphp
+
+<div class="mc-summary">
+    <div class="mc-summary-card">
+        <div class="mc-summary-icon pending"><i class="fas fa-hourglass-half"></i></div>
+        <div class="mc-summary-metric">
+            <span class="mc-summary-value">{{ $consultationSummary['pending'] }}</span>
+            <span class="mc-summary-label">Pending</span>
+        </div>
+    </div>
+    <div class="mc-summary-card">
+        <div class="mc-summary-icon upcoming"><i class="fas fa-calendar-check"></i></div>
+        <div class="mc-summary-metric">
+            <span class="mc-summary-value">{{ $consultationSummary['upcoming'] }}</span>
+            <span class="mc-summary-label">Upcoming</span>
+        </div>
+    </div>
+    <div class="mc-summary-card">
+        <div class="mc-summary-icon completed"><i class="fas fa-check-circle"></i></div>
+        <div class="mc-summary-metric">
+            <span class="mc-summary-value">{{ $consultationSummary['completed'] }}</span>
+            <span class="mc-summary-label">Completed</span>
+        </div>
+    </div>
+    <div class="mc-summary-card">
+        <div class="mc-summary-icon cancelled"><i class="fas fa-times-circle"></i></div>
+        <div class="mc-summary-metric">
+            <span class="mc-summary-value">{{ $consultationSummary['cancelled'] }}</span>
+            <span class="mc-summary-label">Cancelled</span>
+        </div>
+    </div>
+    <div class="mc-summary-card">
+        <div class="mc-summary-icon expired"><i class="fas fa-clock"></i></div>
+        <div class="mc-summary-metric">
+            <span class="mc-summary-value">{{ $consultationSummary['expired'] }}</span>
+            <span class="mc-summary-label">Expired</span>
+        </div>
+    </div>
+</div>
+
+<div class="mc-status-tabs" aria-label="Consultation sections">
+    <button type="button" class="mc-status-tab {{ $activePanel === 'pending' ? 'is-active' : '' }}" data-panel-target="pending">
+        <span>Pending</span>
+        @if($consultationSummary['pending'] > 0)
+            <span class="mc-status-tab-badge">{{ $consultationSummary['pending'] }}</span>
+        @endif
+    </button>
+    <button type="button" class="mc-status-tab {{ $activePanel === 'upcoming' ? 'is-active' : '' }}" data-panel-target="upcoming">
+        <span>Upcoming</span>
+        @if($consultationSummary['upcoming'] > 0)
+            <span class="mc-status-tab-badge">{{ $consultationSummary['upcoming'] }}</span>
+        @endif
+    </button>
+    <button type="button" class="mc-status-tab {{ $activePanel === 'completed' ? 'is-active' : '' }}" data-panel-target="completed">
+        <span>Completed</span>
+        @if($consultationSummary['completed'] > 0)
+            <span class="mc-status-tab-badge">{{ $consultationSummary['completed'] }}</span>
+        @endif
+    </button>
+    <button type="button" class="mc-status-tab {{ $activePanel === 'cancelled' ? 'is-active' : '' }}" data-panel-target="cancelled">
+        <span>Cancelled</span>
+        @if($consultationSummary['cancelled'] > 0)
+            <span class="mc-status-tab-badge">{{ $consultationSummary['cancelled'] }}</span>
+        @endif
+    </button>
+    <button type="button" class="mc-status-tab {{ $activePanel === 'expired' ? 'is-active' : '' }}" data-panel-target="expired">
+        <span>Expired</span>
+        @if($consultationSummary['expired'] > 0)
+            <span class="mc-status-tab-badge">{{ $consultationSummary['expired'] }}</span>
+        @endif
+    </button>
+</div>
+
 @if(session('success'))
 <div class="mc-alert-success"><i class="fas fa-check-circle"></i> {{ session('success') }}</div>
 @endif
 
-@php
-    $pending   = $consultations->where('status', 'pending');
-    $upcoming  = $consultations->where('status', 'upcoming');
-    $completed = $consultations->where('status', 'completed');
-    $cancelled = $consultations->where('status', 'cancelled');
-@endphp
-
 {{-- ── PENDING ── --}}
-@if($pending->isNotEmpty())
+<div class="mc-panel {{ $activePanel === 'pending' ? 'is-active' : '' }}" data-panel="pending">
+@if($pendingConsultations->isNotEmpty())
 <div class="mc-section-label">
-    <i class="fas fa-hourglass-half" style="color:#d97706;"></i> Awaiting Confirmation ({{ $pending->count() }})
+    <i class="fas fa-hourglass-half" style="color:#d97706;"></i> Awaiting Confirmation ({{ $pendingConsultations->count() }})
 </div>
-@foreach($pending as $c)
+@foreach($pendingConsultations as $c)
 @php $sched = \Carbon\Carbon::parse($c->scheduled_at); @endphp
 <div class="mc-card" style="border-left:4px solid #f59e0b;">
     <div class="mc-avatar">
@@ -228,13 +492,15 @@
 </div>
 @endforeach
 @endif
+</div>
 
 {{-- ── UPCOMING ── --}}
-@if($upcoming->isNotEmpty())
-<div class="mc-section-label" style="{{ $pending->isNotEmpty() ? 'margin-top:28px;' : '' }}">
-    <i class="fas fa-calendar-check" style="color:#2563eb;"></i> Upcoming ({{ $upcoming->count() }})
+<div class="mc-panel {{ $activePanel === 'upcoming' ? 'is-active' : '' }}" data-panel="upcoming">
+@if($upcomingConsultations->isNotEmpty())
+<div class="mc-section-label" style="{{ $pendingConsultations->isNotEmpty() ? 'margin-top:28px;' : '' }}">
+    <i class="fas fa-calendar-check" style="color:#2563eb;"></i> Upcoming ({{ $upcomingConsultations->count() }})
 </div>
-@foreach($upcoming as $c)
+@foreach($upcomingConsultations as $c)
 @php $sched = \Carbon\Carbon::parse($c->scheduled_at); @endphp
 <div class="mc-card" style="border-left:4px solid #2563eb;">
     <div class="mc-avatar">
@@ -290,11 +556,13 @@
 @endif
 
 {{-- ── COMPLETED ── --}}
-@if($completed->isNotEmpty())
-<div class="mc-section-label" style="margin-top:28px;">
-    <i class="fas fa-check-circle" style="color:#059669;"></i> Completed ({{ $completed->count() }})
 </div>
-@foreach($completed as $c)
+<div class="mc-panel {{ $activePanel === 'completed' ? 'is-active' : '' }}" data-panel="completed">
+@if($completedConsultations->total() > 0)
+<div class="mc-section-label" style="margin-top:28px;">
+    <i class="fas fa-check-circle" style="color:#059669;"></i> Completed ({{ $completedConsultations->total() }})
+</div>
+@foreach($completedConsultations as $c)
 @php $sched = \Carbon\Carbon::parse($c->scheduled_at); @endphp
 @php $balancePayment = $c->payments->firstWhere('type', 'balance'); @endphp
 <div class="mc-card" style="border-left:4px solid #059669;">
@@ -351,11 +619,18 @@
 @endif
 
 {{-- ── CANCELLED ── --}}
-@if($cancelled->isNotEmpty())
-<div class="mc-section-label" style="margin-top:28px;">
-    <i class="fas fa-ban" style="color:#dc2626;"></i> Cancelled ({{ $cancelled->count() }})
+@if($completedConsultations->hasPages())
+<div class="mc-pagination">
+    {{ $completedConsultations->appends(['section' => 'completed'])->links('vendor.pagination.client-clean') }}
 </div>
-@foreach($cancelled as $c)
+@endif
+</div>
+<div class="mc-panel {{ $activePanel === 'cancelled' ? 'is-active' : '' }}" data-panel="cancelled">
+@if($cancelledConsultations->total() > 0)
+<div class="mc-section-label" style="margin-top:28px;">
+    <i class="fas fa-ban" style="color:#dc2626;"></i> Cancelled ({{ $cancelledConsultations->total() }})
+</div>
+@foreach($cancelledConsultations as $c)
 @php $sched = \Carbon\Carbon::parse($c->scheduled_at); @endphp
 <div class="mc-card" style="border-left:4px solid #fca5a5; opacity:.8;">
     <div class="mc-avatar" style="opacity:.7;">
@@ -378,7 +653,50 @@
 @endif
 
 {{-- ── EMPTY STATE ── --}}
-@if($consultations->isEmpty())
+@if($cancelledConsultations->hasPages())
+<div class="mc-pagination">
+    {{ $cancelledConsultations->appends(['section' => 'cancelled'])->links('vendor.pagination.client-clean') }}
+</div>
+@endif
+ </div>
+<div class="mc-panel {{ $activePanel === 'expired' ? 'is-active' : '' }}" data-panel="expired">
+@if($expiredConsultations->total() > 0)
+<div class="mc-section-label" style="margin-top:28px;">
+    <i class="fas fa-clock" style="color:#6b7280;"></i> Expired ({{ $expiredConsultations->total() }})
+</div>
+@foreach($expiredConsultations as $c)
+@php $sched = \Carbon\Carbon::parse($c->scheduled_at); @endphp
+<div class="mc-card" style="border-left:4px solid #d1d5db; opacity:.88;">
+    <div class="mc-avatar" style="opacity:.78;">
+        <img src="{{ $c->lawyer->avatar_url ?? asset('images/default-avatar.png') }}" alt="{{ $c->lawyer->name }}">
+    </div>
+    <div class="mc-info">
+        <div class="mc-lawyer-name">{{ $c->lawyer->name }}</div>
+        <div class="mc-specialty">{{ optional($c->lawyer->lawyerProfile)->specialty ?? 'Attorney at Law' }}</div>
+        <div class="mc-meta">
+            <span class="mc-meta-item"><i class="fas fa-calendar"></i> {{ $sched->format('M d, Y') }}</span>
+            <span class="mc-meta-item"><i class="fas fa-clock"></i> {{ $sched->format('g:i A') }}</span>
+            <span class="mc-meta-item"><i class="fas fa-stopwatch"></i> {{ $c->duration_label }}</span>
+            <span class="mc-type">
+                <i class="fas fa-{{ $c->type === 'video' ? 'video' : ($c->type === 'phone' ? 'phone' : 'building') }}"></i>
+                {{ ucfirst($c->type) }}
+            </span>
+        </div>
+    </div>
+    <div class="mc-right">
+        <span class="mc-badge expired"><span class="dot"></span> Expired</span>
+        <div class="mc-price" style="color:#6b7280;">&#8369;{{ number_format($c->price, 0) }}</div>
+    </div>
+</div>
+@endforeach
+@endif
+@if($expiredConsultations->hasPages())
+<div class="mc-pagination">
+    {{ $expiredConsultations->appends(['section' => 'expired'])->links('vendor.pagination.client-clean') }}
+</div>
+@endif
+ </div>
+@if(!$hasConsultations)
 <div class="mc-empty">
     <i class="fas fa-calendar-times"></i>
     <h3>No consultations yet</h3>
@@ -477,6 +795,27 @@ function setRating(val) {
     });
     document.getElementById('rv-submit').disabled = val < 1;
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    var tabButtons = document.querySelectorAll('[data-panel-target]');
+    var panels = document.querySelectorAll('[data-panel]');
+
+    function setActivePanel(panelName) {
+        tabButtons.forEach(function (button) {
+            button.classList.toggle('is-active', button.dataset.panelTarget === panelName);
+        });
+
+        panels.forEach(function (panel) {
+            panel.classList.toggle('is-active', panel.dataset.panel === panelName);
+        });
+    }
+
+    tabButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            setActivePanel(button.dataset.panelTarget);
+        });
+    });
+});
 </script>
 @endpush
 

@@ -1,6 +1,99 @@
 @extends('layouts.app')
 @section('title', 'Payments')
 @section('content')
+<style>
+.pay-toolbar {
+    display:flex;
+    gap:12px;
+    align-items:end;
+    justify-content:space-between;
+    margin-bottom:20px;
+    flex-wrap:wrap;
+}
+.pay-search-form {
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    width:100%;
+}
+.pay-field {
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+.pay-field label {
+    font-size:.78rem;
+    font-weight:600;
+    color:#6b7280;
+}
+.pay-input,
+.pay-select {
+    min-height:42px;
+    border:1.5px solid #dbe3ef;
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:.9rem;
+    color:#1e2d4d;
+    background:#fff;
+    font-family:inherit;
+}
+.pay-search {
+    flex:1 1 280px;
+}
+.pay-search .pay-input {
+    width:100%;
+}
+.pay-actions {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+}
+.pay-btn {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    min-height:42px;
+    padding:0 16px;
+    border:none;
+    border-radius:10px;
+    font-size:.88rem;
+    font-weight:600;
+    cursor:pointer;
+    text-decoration:none;
+    font-family:inherit;
+}
+.pay-btn-primary {
+    background:#1e2d4d;
+    color:#fff;
+}
+.pay-btn-secondary {
+    background:#f3f4f6;
+    color:#374151;
+}
+.pay-results-meta {
+    font-size:.82rem;
+    color:#6b7280;
+    margin-bottom:14px;
+}
+.pay-pagination {
+    margin-top:18px;
+}
+.pay-pagination .pagination {
+    justify-content:center;
+    margin-bottom:0;
+}
+@media (max-width: 700px) {
+    .pay-actions {
+        width:100%;
+    }
+
+    .pay-btn {
+        flex:1 1 100%;
+    }
+}
+</style>
 <div class="page-header">
     <div>
         <h1 class="page-title">Payment History</h1>
@@ -33,10 +126,60 @@
     <div class="stat-card">
         <div class="stat-icon blue"><i class="fas fa-receipt"></i></div>
         <div class="stat-info">
-            <span class="stat-value">{{ $payments->count() }}</span>
+            <span class="stat-value">{{ $transactionCount }}</span>
             <span class="stat-label">Transactions</span>
         </div>
     </div>
+</div>
+
+<div class="content-card" style="padding:20px;margin-bottom:20px;">
+    <form method="GET" action="{{ route('payments') }}" class="pay-search-form">
+        <div class="pay-field pay-search">
+            <label for="paymentSearch">Search</label>
+            <input
+                id="paymentSearch"
+                type="text"
+                name="search"
+                value="{{ request('search') }}"
+                class="pay-input"
+                placeholder="Search lawyer, consultation code, type, or status"
+            >
+        </div>
+
+        <div class="pay-field">
+            <label for="paymentStatus">Status</label>
+            <select id="paymentStatus" name="status" class="pay-select">
+                <option value="">All statuses</option>
+                <option value="paid" @selected(request('status') === 'paid')>Paid</option>
+                <option value="downpayment_paid" @selected(request('status') === 'downpayment_paid')>Paid (Down)</option>
+                <option value="pending" @selected(request('status') === 'pending')>Pending</option>
+                <option value="refunded" @selected(request('status') === 'refunded')>Refunded</option>
+            </select>
+        </div>
+
+        <div class="pay-field">
+            <label for="paymentType">Type</label>
+            <select id="paymentType" name="type" class="pay-select">
+                <option value="">All types</option>
+                <option value="downpayment" @selected(request('type') === 'downpayment')>Downpayment 50%</option>
+                <option value="balance" @selected(request('type') === 'balance')>Balance 50%</option>
+                <option value="full" @selected(request('type') === 'full')>Full</option>
+            </select>
+        </div>
+
+        <div class="pay-actions">
+            <button type="submit" class="pay-btn pay-btn-primary">
+                <i class="fas fa-search"></i> Apply
+            </button>
+            <a href="{{ route('payments') }}" class="pay-btn pay-btn-secondary">
+                <i class="fas fa-rotate-left"></i> Clear
+            </a>
+        </div>
+    </form>
+</div>
+
+<div class="pay-results-meta">
+    Showing {{ $payments->count() }} of {{ $payments->total() }} payment{{ $payments->total() === 1 ? '' : 's' }}
 </div>
 
 <div class="content-card" style="overflow-x:auto;">
@@ -88,11 +231,17 @@
             <tr>
                 <td colspan="6" style="text-align:center;padding:60px;color:#888;">
                     <i class="fas fa-receipt" style="font-size:2.5rem;margin-bottom:16px;display:block;"></i>
-                    No payments yet.
+                    No payments matched your filters.
                 </td>
             </tr>
             @endforelse
         </tbody>
     </table>
 </div>
+
+@if($payments->hasPages())
+<div class="pay-pagination">
+    {{ $payments->links('vendor.pagination.client-clean') }}
+</div>
+@endif
 @endsection

@@ -124,6 +124,30 @@
     .nav-user-signout { color: #dc2626 !important; }
     .nav-user-signout i { color: #dc2626 !important; }
     .nav-user-divider { height: 1px; background: #f0f2f5; margin: 6px 0; }
+
+    @media (max-width: 900px) {
+        .nav-user-card {
+            margin-left: 0;
+            justify-self: end;
+            padding: 4px;
+        }
+
+        .nav-user-text {
+            display: none;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .nav-user-card {
+            padding: 3px;
+        }
+
+        .nav-user-initials,
+        .nav-user-avatar-img {
+            width: 34px;
+            height: 34px;
+        }
+    }
     </style>
 
     <script>

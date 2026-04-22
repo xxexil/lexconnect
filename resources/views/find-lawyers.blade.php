@@ -184,6 +184,22 @@
                 </div>
             </div>
 
+            {{-- Location --}}
+            <div class="filter-section open" id="sec-location">
+                <div class="filter-section-head" onclick="toggleSection('sec-location')">
+                    <span>Location</span>
+                    <i class="fas fa-chevron-up fl-chevron"></i>
+                </div>
+                <div class="filter-section-body">
+                    <select name="location" class="fl-range-input" style="width:100%;margin-top:4px;">
+                        <option value="">All Locations</option>
+                        @foreach($locations as $location)
+                        <option value="{{ $location }}" @selected(request('location') === $location)>{{ $location }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
             {{-- Experience --}}
             <div class="filter-section open" id="sec-exp">
                 <div class="filter-section-head" onclick="toggleSection('sec-exp')">
@@ -311,7 +327,7 @@
                             @endif
                         @endfor
                         <span class="lc-rating-val">{{ number_format($lp->rating,1) }}</span>
-                        <span class="lc-reviews">({{ $lp->reviews_count }} reviews)</span>
+                        <span class="lc-reviews">({{ $lp->reviews_count }} {{ \Illuminate\Support\Str::plural('review', $lp->reviews_count) }})</span>
                     </div>
 
                     {{-- Specialty tag --}}
@@ -322,7 +338,7 @@
                     {{-- Meta: exp + location --}}
                     <div class="lc-meta">
                         <span><i class="fas fa-briefcase"></i> {{ $lp->experience_years }} yrs</span>
-                        <span><i class="fas fa-map-marker-alt"></i> {{ $lp->location }}</span>
+                        <span><i class="fas fa-map-marker-alt"></i> {{ $lp->location ?: 'Location not set' }}</span>
                     </div>
 
                     {{-- Next slot --}}
@@ -365,16 +381,11 @@
 
                     {{-- Actions --}}
                     <div class="lc-actions">
-                        @if($lawyerStatus === 'active')
                         <a class="lc-book-btn"
                             href="{{ route('consultations.create', ['lawyer' => $lp->user_id, 'return_to' => url()->full()]) }}">
-                            <i class="fas fa-video"></i> Book
+                            <i class="fas fa-{{ $lawyerStatus === 'active' ? 'video' : 'calendar-check' }}"></i>
+                            {{ $lawyerStatus === 'active' ? 'Book Now' : 'View Slots' }}
                         </a>
-                        @else
-                        <button class="lc-book-btn disabled" disabled>
-                            <i class="fas fa-clock"></i> Unavailable
-                        </button>
-                        @endif
                         <a href="{{ route('lawyer.public-profile', $lp->user_id) }}" class="lc-icon-btn" title="View Profile">
                             <i class="fas fa-user"></i>
                         </a>
@@ -401,7 +412,7 @@
         {{-- Pagination --}}
         @if($lawyers->hasPages())
         <div class="fl-pagination-wrap">
-            {{ $lawyers->links() }}
+            {{ $lawyers->links('vendor.pagination.client-clean') }}
         </div>
         @endif
     </div>
@@ -558,6 +569,32 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof window._updateBookCost !== 'function') {
         window._updateBookCost = function() {};
     }
+
+    window.toggleSection = function(sectionId) {
+        const section = document.getElementById(sectionId);
+        if (!section) {
+            return;
+        }
+
+        const body = section.querySelector('.filter-section-body');
+        const icon = section.querySelector('.fl-chevron');
+        const isOpen = section.classList.contains('open');
+
+        section.classList.toggle('open', !isOpen);
+        if (body) {
+            body.style.display = isOpen ? 'none' : '';
+        }
+        if (icon) {
+            icon.classList.toggle('fa-chevron-up', !isOpen);
+            icon.classList.toggle('fa-chevron-down', isOpen);
+        }
+    };
+
+    window.applySort = function(value) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('sort', value);
+        window.location.href = url.toString();
+    };
     // Helper to inject lawyer payment info into modal
 
     let _bookRate = 0;
