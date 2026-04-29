@@ -17,7 +17,6 @@ class LawFirmConsultationController extends Controller
         $pending   = Consultation::with(['client', 'lawyer', 'payment'])
             ->whereIn('lawyer_id', $lawyerIds)
             ->where('status', 'pending')
-            ->whereHas('payment', fn($q) => $q->where('status', 'downpayment_paid'))
             ->latest()->get();
 
         $upcoming  = Consultation::with(['client', 'lawyer'])

@@ -45,6 +45,13 @@ return [
         'room_prefix' => env('JITSI_ROOM_PREFIX', 'lexconnect'),
     ],
 
+    'webrtc' => [
+        'stun_urls' => array_filter(array_map('trim', explode(',', (string) env('WEBRTC_STUN_URLS', 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302')))),
+        'turn_urls' => array_filter(array_map('trim', explode(',', (string) env('WEBRTC_TURN_URLS', '')))),
+        'turn_username' => env('WEBRTC_TURN_USERNAME'),
+        'turn_credential' => env('WEBRTC_TURN_CREDENTIAL'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

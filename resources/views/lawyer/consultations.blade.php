@@ -54,7 +54,10 @@
 {{-- ── PENDING TAB ── --}}
 <div id="tab-pending" class="lp-tab-content">
     @forelse($pending as $c)
-    @php $sched = \Carbon\Carbon::parse($c->scheduled_at); @endphp
+    @php
+        $sched = \Carbon\Carbon::parse($c->scheduled_at);
+        $downpaymentPaid = $c->payment && $c->payment->status === 'downpayment_paid';
+    @endphp
     <div class="cons-card cons-pending">
         <div class="cons-header">
             <div class="cons-avatar" style="{{ $c->client->avatar_url ? 'padding:0;overflow:hidden;' : '' }}">
@@ -70,6 +73,10 @@
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
                 <span class="cons-badge cons-badge-pending"><span class="cons-dot"></span> Pending</span>
+                <span style="font-size:.75rem;font-weight:600;color:{{ $downpaymentPaid ? '#16a34a' : '#d97706' }};">
+                    <i class="fas {{ $downpaymentPaid ? 'fa-check-circle' : 'fa-hourglass-half' }}" style="margin-right:3px;"></i>
+                    {{ $downpaymentPaid ? 'Downpayment paid' : 'Awaiting downpayment' }}
+                </span>
                 <span style="font-size:.75rem;color:#9ca3af;"><i class="fas fa-clock" style="margin-right:3px;"></i>Requested {{ $c->created_at->diffForHumans() }}</span>
             </div>
         </div>

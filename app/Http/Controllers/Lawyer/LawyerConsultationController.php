@@ -19,9 +19,6 @@ class LawyerConsultationController extends Controller
         $pending   = Consultation::with(['client', 'payment'])
             ->where('lawyer_id', $user->id)
             ->where('status', 'pending')
-            ->whereHas('payment', function($q) {
-                $q->where('status', 'downpayment_paid');
-            })
             ->orderBy('created_at', 'desc')
             ->get();
 

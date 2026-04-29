@@ -13,14 +13,20 @@ console.log('VITE_REVERB_APP_KEY:', import.meta.env.VITE_REVERB_APP_KEY);
 console.log('VITE_REVERB_PORT:', import.meta.env.VITE_REVERB_PORT);
 
 try {
+    const currentProtocol = window.location.protocol === 'https:' ? 'https' : 'http';
+    const reverbScheme = import.meta.env.VITE_REVERB_SCHEME ?? currentProtocol;
+    const forceTLS = reverbScheme === 'https' || window.location.protocol === 'https:';
+    const reverbHost = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
+    const reverbPort = import.meta.env.VITE_REVERB_PORT ?? (forceTLS ? 443 : 8080);
+
     window.Echo = new Echo({
         broadcaster: 'reverb',
         key: import.meta.env.VITE_REVERB_APP_KEY,
-        wsHost: import.meta.env.VITE_REVERB_HOST ?? window.location.hostname,
-        wsPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-        wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-        forceTLS: false,
-        enabledTransports: ['ws'], // Only use ws, not wss for local development
+        wsHost: reverbHost,
+        wsPort: reverbPort,
+        wssPort: reverbPort,
+        forceTLS: forceTLS,
+        enabledTransports: forceTLS ? ['wss', 'ws'] : ['ws', 'wss'],
         disableStats: true,
         authorizer: (channel, options) => {
             return {

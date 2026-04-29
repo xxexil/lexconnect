@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Consultation;
 use App\Models\Payment;
 use App\Services\ConsultationPaymentService;
+use App\Services\WebRtcConfigService;
 use Illuminate\Support\Facades\Auth;
 
 class VideoCallController extends Controller
 {
-    public function join(Consultation $consultation)
+    public function join(Consultation $consultation, WebRtcConfigService $webRtcConfig)
     {
         $user = Auth::user();
 
@@ -29,11 +30,24 @@ class VideoCallController extends Controller
             return redirect()->back()->with('error', 'The video call will be available at ' . $consultation->videoJoinOpensAt()->format('M d, g:i A') . ', 5 minutes before the scheduled time.');
         }
 
-        $roomName    = 'LexConnect-' . $consultation->code;
         $displayName = $user->name;
         $returnRoute = $user->role === 'lawyer' ? route('lawyer.consultations') : route('consultations');
+        $peer = $consultation->client_id === $user->id
+            ? $consultation->lawyer()->select('id', 'name', 'role')->first()
+            : $consultation->client()->select('id', 'name', 'role')->first();
 
-        return view('video-call', compact('consultation', 'roomName', 'displayName', 'returnRoute'));
+        return view('video-call', [
+            'consultation' => $consultation,
+            'displayName' => $displayName,
+            'returnRoute' => $returnRoute,
+            'iceServers' => $webRtcConfig->iceServers(),
+            'currentUserId' => $user->id,
+            'currentUserRole' => $user->role,
+            'peerId' => $peer?->id,
+            'peerName' => $peer?->name,
+            'echoSignalingChannel' => $consultation->videoEchoSignalingChannel(),
+            'presenceSignalingChannel' => $consultation->videoPresenceSignalingChannel(),
+        ]);
     }
 
     public function end(Consultation $consultation, ConsultationPaymentService $paymentService)

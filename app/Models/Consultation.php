@@ -56,10 +56,17 @@ class Consultation extends Model
 
     public function videoJoinUrl(): string
     {
-        $domain = trim((string) config('services.jitsi.domain', 'meet.jit.si'));
-        $domain = preg_replace('#^https?://#', '', $domain);
+        return url('/consultations/' . $this->getKey() . '/video');
+    }
 
-        return 'https://' . trim($domain, '/') . '/' . rawurlencode($this->videoRoomName());
+    public function videoEchoSignalingChannel(): string
+    {
+        return 'consultation.' . $this->getKey();
+    }
+
+    public function videoPresenceSignalingChannel(): string
+    {
+        return 'presence-' . $this->videoEchoSignalingChannel();
     }
 
     public function toApiArray(?int $viewerId = null): array
@@ -78,6 +85,8 @@ class Consultation extends Model
             'can_join_video'    => $this->canJoinVideoCall(),
             'video_room_name'   => $this->type === 'video' ? $this->videoRoomName() : null,
             'video_join_url'    => $this->type === 'video' ? $this->videoJoinUrl() : null,
+            'video_signaling_channel' => $this->type === 'video' ? $this->videoPresenceSignalingChannel() : null,
+            'video_echo_signaling_channel' => $this->type === 'video' ? $this->videoEchoSignalingChannel() : null,
         ];
     }
 

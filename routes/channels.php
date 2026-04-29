@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Conversation;
+use App\Models\Consultation;
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
@@ -29,5 +30,35 @@ Broadcast::channel('presence-user.{userId}', function ($user, $userId) {
     if ((int) $user->id === (int) $userId) {
         return ['id' => $user->id, 'name' => $user->name];
     }
+    return false;
+});
+
+Broadcast::channel('consultation.{consultationId}', function ($user, $consultationId) {
+    $consultation = Consultation::find($consultationId);
+
+    if ($consultation
+        && ((int) $consultation->client_id === (int) $user->id || (int) $consultation->lawyer_id === (int) $user->id)) {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'role' => $user->role,
+        ];
+    }
+
+    return false;
+});
+
+Broadcast::channel('presence-consultation.{consultationId}', function ($user, $consultationId) {
+    $consultation = Consultation::find($consultationId);
+
+    if ($consultation
+        && ((int) $consultation->client_id === (int) $user->id || (int) $consultation->lawyer_id === (int) $user->id)) {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'role' => $user->role,
+        ];
+    }
+
     return false;
 });

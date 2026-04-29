@@ -54,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/consultations', [ClientConsultationController::class, 'book']);
         Route::post('/consultations/{id}/cancel', [ClientConsultationController::class, 'cancel']);
         Route::get('/consultations/{id}/video', [ClientConsultationController::class, 'video']);
+        Route::get('/consultations/{id}/status', [ClientConsultationController::class, 'status']);
         Route::get('/payments', [ClientPaymentController::class, 'index']);
         Route::post('/payments/{id}/resume', [ClientPaymentController::class, 'resume']);
         Route::get('/payments/{id}/status', [ClientPaymentController::class, 'status']);
@@ -77,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/consultations/{id}/decline', [LawyerConsultationController::class, 'decline']);
         Route::post('/consultations/{id}/complete', [LawyerConsultationController::class, 'complete']);
         Route::get('/consultations/{id}/video', [LawyerConsultationController::class, 'video']);
+        Route::get('/consultations/{id}/status', [LawyerConsultationController::class, 'status']);
         Route::get('/messages', [LawyerMessageController::class, 'index']);
         Route::get('/messages/{conversationId}', [LawyerMessageController::class, 'show']);
         Route::post('/messages/send', [LawyerMessageController::class, 'send']);

@@ -6,13 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Consultation;
 use App\Models\Payment;
 use App\Services\ConsultationPaymentService;
+use App\Services\WebRtcConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ConsultationController extends Controller
 {
-    public function __construct(private ConsultationPaymentService $paymentService)
+    public function __construct(
+        private ConsultationPaymentService $paymentService,
+        private WebRtcConfigService $webRtcConfig,
+    )
     {
     }
 
@@ -42,6 +46,8 @@ class ConsultationController extends Controller
             'can_join_video'    => $c->canJoinVideoCall(),
             'video_room_name'   => $c->type === 'video' ? $c->videoRoomName() : null,
             'video_join_url'    => $c->type === 'video' ? $c->videoJoinUrl() : null,
+            'video_signaling_channel' => $c->type === 'video' ? $c->videoPresenceSignalingChannel() : null,
+            'video_echo_signaling_channel' => $c->type === 'video' ? $c->videoEchoSignalingChannel() : null,
             'lawyer'           => ['id' => $c->lawyer->id, 'name' => $c->lawyer->name, 'avatar_url' => $c->lawyer->avatar_url],
             'has_review'       => $c->review !== null,
         ]);
@@ -168,17 +174,37 @@ class ConsultationController extends Controller
 
         return response()->json([
             'consultation' => $consultation->toApiArray($request->user()->id),
-            'jitsi_domain' => config('services.jitsi.domain'),
-            'jitsi_app_id' => config('services.jitsi.app_id'),
-            'jitsi_room_prefix' => config('services.jitsi.room_prefix', 'lexconnect'),
             'room_name' => $consultation->videoRoomName(),
             'join_url' => $consultation->videoJoinUrl(),
             'display_name' => $request->user()->name,
             'can_join' => $consultation->canJoinVideoCall(),
             'join_opens_at' => $consultation->videoJoinOpensAt(),
-            'ice_servers' => [
-                ['urls' => ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302']],
-            ],
+            'signaling_channel' => $consultation->videoEchoSignalingChannel(),
+            'echo_signaling_channel' => $consultation->videoEchoSignalingChannel(),
+            'signaling_event' => 'client-signal',
+            'broadcast_auth_endpoint' => url('/api/broadcasting/auth'),
+            'peer_id' => $consultation->lawyer_id,
+            'is_offer_initiator' => false,
+            'ice_servers' => $this->webRtcConfig->iceServers(),
+        ]);
+    }
+
+    public function status(Request $request, $id)
+    {
+        $consultation = Consultation::where('client_id', $request->user()->id)->findOrFail($id);
+        $balance = $consultation->balancePayment()->first();
+        $balanceUrl = null;
+
+        if ($balance && $balance->status === 'pending') {
+            $balanceUrl = route('payment.balance.start', $balance);
+        }
+
+        return response()->json([
+            'consultation_id' => $consultation->id,
+            'status' => $consultation->status,
+            'balance_payment_id' => $balance?->id,
+            'balance_status' => $balance?->status,
+            'balance_checkout_url' => $balanceUrl,
         ]);
     }
 }

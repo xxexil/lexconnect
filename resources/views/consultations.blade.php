@@ -61,28 +61,28 @@
     gap:4px;
     flex-wrap:wrap;
     padding:6px;
-    margin:-8px 0 28px;
+    margin:-8px 0 20px;
     background:#fff;
-    border:1px solid #e7edf6;
-    border-radius:14px;
-    box-shadow:0 1px 4px rgba(0,0,0,.04);
+    border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.05);
+    width:fit-content;
+    max-width:100%;
 }
 .mc-status-tab {
     display:inline-flex;
     align-items:center;
     justify-content:center;
     gap:7px;
-    min-height:42px;
-    padding:0 16px;
+    padding:10px 22px;
     border:none;
-    border-radius:10px;
+    border-radius:8px;
     background:transparent;
-    color:#52627c;
-    font-size:.95rem;
-    font-weight:700;
+    color:#6c757d;
+    font-size:.88rem;
+    font-weight:600;
     font-family:inherit;
     cursor:pointer;
-    transition:background .2s, color .2s, box-shadow .2s;
+    transition:all .2s;
     white-space:nowrap;
 }
 .mc-status-tab:hover {
@@ -98,14 +98,14 @@
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    min-width:22px;
-    height:22px;
-    padding:0 6px;
-    border-radius:999px;
-    background:#2563eb;
+    min-width:auto;
+    height:auto;
+    padding:2px 7px;
+    border-radius:10px;
+    background:#dc3545;
     color:#fff;
-    font-size:.74rem;
-    font-weight:800;
+    font-size:.7rem;
+    font-weight:700;
     line-height:1;
 }
 .mc-status-tab.is-active .mc-status-tab-badge {
@@ -272,8 +272,7 @@
     }
 
     .mc-status-tab {
-        flex:1 1 calc(50% - 8px);
-        min-width:128px;
+        flex:0 0 auto;
     }
 
     .mc-card {
@@ -300,16 +299,14 @@
     }
 
     .mc-status-tabs {
-        display:grid;
-        grid-template-columns:1fr;
+        display:flex;
     }
 
     .mc-status-tab {
-        width:100%;
-        justify-content:space-between;
-        padding:0 14px;
-        min-height:40px;
-        font-size:.92rem;
+        width:auto;
+        justify-content:center;
+        padding:10px 22px;
+        font-size:.88rem;
     }
 }
 </style>

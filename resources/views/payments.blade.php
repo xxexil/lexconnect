@@ -14,6 +14,7 @@
     display:flex;
     gap:12px;
     flex-wrap:wrap;
+    align-items:flex-end;
     width:100%;
 }
 .pay-field {
@@ -85,6 +86,10 @@
     margin-bottom:0;
 }
 @media (max-width: 700px) {
+    .pay-search-form {
+        align-items:stretch;
+    }
+
     .pay-actions {
         width:100%;
     }

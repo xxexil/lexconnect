@@ -66,6 +66,7 @@ $tabs = [
         $sched    = \Carbon\Carbon::parse($c->scheduled_at);
         $isToday  = $sched->isToday();
         $isTomorrow = $sched->isTomorrow();
+        $downpaymentPaid = $c->payment && $c->payment->status === 'downpayment_paid';
     @endphp
     <div class="lp-consult-card cons-search-item"
          data-search="{{ strtolower($c->client->name . ' ' . $c->lawyer->name) }}"
@@ -83,6 +84,11 @@ $tabs = [
                         <span style="color:#6c757d;font-size:.88rem;font-weight:600;">Atty. {{ $c->lawyer->name }}</span>
                     </div>
                     <span class="lp-type-badge {{ $c->type }}">{{ ucfirst($c->type) }}</span>
+                    @if($status === 'pending')
+                        <span style="font-size:.73rem;font-weight:600;color:{{ $downpaymentPaid ? '#16a34a' : '#d97706' }};background:{{ $downpaymentPaid ? '#f0fdf4' : '#fffbeb' }};padding:2px 8px;border-radius:20px;border:1px solid {{ $downpaymentPaid ? '#bbf7d0' : '#fcd34d' }};">
+                            <i class="fas {{ $downpaymentPaid ? 'fa-check-circle' : 'fa-hourglass-half' }}" style="margin-right:3px;"></i>{{ $downpaymentPaid ? 'Downpayment Paid' : 'Awaiting Downpayment' }}
+                        </span>
+                    @endif
                     @if($status === 'upcoming')
                         @if($isToday)
                             <span style="font-size:.75rem;font-weight:700;color:#dc2626;background:#fff5f5;padding:2px 8px;border-radius:20px;border:1px solid #fca5a5;">Today</span>
