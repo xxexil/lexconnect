@@ -6,7 +6,9 @@ use App\Models\Consultation;
 use App\Models\Payment;
 use App\Services\ConsultationPaymentService;
 use App\Services\WebRtcConfigService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class VideoCallController extends Controller
 {
@@ -67,7 +69,10 @@ class VideoCallController extends Controller
                 ->first();
 
             if ($balance) {
-                $paymentService->createBalanceCheckout($balance->loadMissing(['consultation', 'client', 'lawyer']));
+                $paymentService->createBalanceCheckout(
+                    $balance->loadMissing(['consultation', 'client', 'lawyer']),
+                    forceRefresh: true
+                );
             }
         }
 
@@ -96,5 +101,89 @@ class VideoCallController extends Controller
             'balance_status' => $balance?->status,
             'balance_checkout_url' => $balanceUrl,
         ]);
+    }
+
+    public function heartbeat(Consultation $consultation)
+    {
+        $user = Auth::user();
+
+        if ($consultation->client_id !== $user->id && $consultation->lawyer_id !== $user->id) {
+            abort(403, 'You are not part of this consultation.');
+        }
+
+        $peerId = (int) ($consultation->client_id === $user->id
+            ? $consultation->lawyer_id
+            : $consultation->client_id);
+
+        Cache::put($this->presenceKey($consultation, (int) $user->id), now()->timestamp, now()->addSeconds(12));
+
+        return response()->json([
+            'peer_online' => Cache::has($this->presenceKey($consultation, $peerId)),
+            'peer_id' => $peerId,
+        ]);
+    }
+
+    public function signal(Request $request, Consultation $consultation)
+    {
+        $user = Auth::user();
+
+        if ($consultation->client_id !== $user->id && $consultation->lawyer_id !== $user->id) {
+            abort(403, 'You are not part of this consultation.');
+        }
+
+        $peerId = (int) ($consultation->client_id === $user->id
+            ? $consultation->lawyer_id
+            : $consultation->client_id);
+
+        $payload = $request->validate([
+            'type' => ['required', 'string', 'in:peer-ready,hangup,offer,answer,ice-candidate'],
+            'sdp' => ['nullable', 'array'],
+            'candidate' => ['nullable', 'array'],
+            'signalId' => ['nullable', 'string'],
+            'sentAt' => ['nullable', 'integer'],
+        ]);
+
+        $payload = array_merge($payload, [
+            'signalId' => $payload['signalId'] ?? (string) str()->uuid(),
+            'consultationId' => $consultation->id,
+            'fromUserId' => (int) $user->id,
+            'fromRole' => $user->role,
+            'targetUserId' => $peerId,
+            'sentAt' => $payload['sentAt'] ?? (int) round(microtime(true) * 1000),
+        ]);
+
+        $key = $this->signalKey($consultation, $peerId);
+        $signals = Cache::get($key, []);
+        $signals[] = $payload;
+        $signals = array_slice($signals, -80);
+
+        Cache::put($key, $signals, now()->addMinutes(10));
+
+        return response()->json(['queued' => true]);
+    }
+
+    public function signals(Consultation $consultation)
+    {
+        $user = Auth::user();
+
+        if ($consultation->client_id !== $user->id && $consultation->lawyer_id !== $user->id) {
+            abort(403, 'You are not part of this consultation.');
+        }
+
+        $key = $this->signalKey($consultation, (int) $user->id);
+
+        return response()->json([
+            'signals' => Cache::pull($key, []),
+        ]);
+    }
+
+    private function presenceKey(Consultation $consultation, int $userId): string
+    {
+        return "video-call:{$consultation->id}:presence:{$userId}";
+    }
+
+    private function signalKey(Consultation $consultation, int $userId): string
+    {
+        return "video-call:{$consultation->id}:signals:{$userId}";
     }
 }

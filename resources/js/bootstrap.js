@@ -18,6 +18,7 @@ try {
     const forceTLS = reverbScheme === 'https' || window.location.protocol === 'https:';
     const reverbHost = import.meta.env.VITE_REVERB_HOST || window.location.hostname;
     const reverbPort = import.meta.env.VITE_REVERB_PORT ?? (forceTLS ? 443 : 8080);
+    const websocketTransport = forceTLS ? 'wss' : 'ws';
 
     window.Echo = new Echo({
         broadcaster: 'reverb',
@@ -26,7 +27,7 @@ try {
         wsPort: reverbPort,
         wssPort: reverbPort,
         forceTLS: forceTLS,
-        enabledTransports: forceTLS ? ['wss', 'ws'] : ['ws', 'wss'],
+        enabledTransports: [websocketTransport],
         disableStats: true,
         authorizer: (channel, options) => {
             return {

@@ -76,7 +76,10 @@ class LawyerConsultationController extends Controller
             ->first();
 
         if ($balance) {
-            $paymentService->createBalanceCheckout($balance->loadMissing(['consultation', 'client', 'lawyer']));
+            $paymentService->createBalanceCheckout(
+                $balance->loadMissing(['consultation', 'client', 'lawyer']),
+                forceRefresh: true
+            );
         }
 
         return back()->with('success', 'Consultation marked as completed. The client can now pay the remaining balance.');

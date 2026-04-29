@@ -21,7 +21,10 @@ class BalancePaymentController extends Controller
                 ->with('success', 'The remaining balance for this consultation is already paid.');
         }
 
-        $payment = $paymentService->createBalanceCheckout($payment->loadMissing(['consultation', 'client', 'lawyer']));
+        $payment = $paymentService->createBalanceCheckout(
+            $payment->loadMissing(['consultation', 'client', 'lawyer']),
+            forceRefresh: true
+        );
 
         if ($payment->status === 'paid') {
             return redirect()->route('consultations')

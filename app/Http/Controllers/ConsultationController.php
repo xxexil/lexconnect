@@ -353,7 +353,6 @@ class ConsultationController extends Controller
         ]);
 
         // Create PayMongo checkout session and redirect client to pay
-        $appUrl      = rtrim(config('app.url'), '/');
         $scheduledAt = \Carbon\Carbon::parse($consultation->scheduled_at)->format('M d, Y g:i A');
 
         $secretKey = config('services.paymongo.secret_key', '');
@@ -392,8 +391,8 @@ class ConsultationController extends Controller
                 itemDescription: "Booking with {$lawyer->name} on {$scheduledAt} ({$consultation->duration_minutes} min)",
                 clientName:      Auth::user()->name,
                 clientEmail:     Auth::user()->email,
-                successUrl:      $appUrl . '/payment/success?payment_id=' . $downpaymentPayment->id,
-                cancelUrl:       $appUrl . '/payment/cancel?payment_id='  . $downpaymentPayment->id,
+                successUrl:      route('payment.success', ['payment_id' => $downpaymentPayment->id]),
+                cancelUrl:       route('payment.cancel', ['payment_id' => $downpaymentPayment->id]),
                 metadata: [
                     'payment_id'      => (string) $downpaymentPayment->id,
                     'consultation_id' => (string) $consultation->id,

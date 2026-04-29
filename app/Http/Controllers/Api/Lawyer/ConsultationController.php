@@ -77,7 +77,10 @@ class ConsultationController extends Controller
 
         $balance = Payment::where('consultation_id', $consultation->id)->where('type', 'balance')->first();
         if ($balance && $balance->status === 'pending') {
-            $paymentService->createBalanceCheckout($balance->loadMissing(['consultation', 'client', 'lawyer']));
+            $paymentService->createBalanceCheckout(
+                $balance->loadMissing(['consultation', 'client', 'lawyer']),
+                forceRefresh: true
+            );
         }
 
         return response()->json(['message' => 'Consultation marked as completed. The client can now pay the remaining balance.']);

@@ -24,9 +24,9 @@ class ConsultationPaymentService
         return $this->createCheckoutForPayment($payment, forceRefresh: true, context: $context);
     }
 
-    public function createBalanceCheckout(Payment $payment, string $context = 'web'): ?Payment
+    public function createBalanceCheckout(Payment $payment, bool $forceRefresh = false, string $context = 'web'): ?Payment
     {
-        return $this->createCheckoutForPayment($payment, context: $context);
+        return $this->createCheckoutForPayment($payment, forceRefresh: $forceRefresh, context: $context);
     }
 
     public function createCheckoutForPayment(Payment $payment, bool $forceRefresh = false, string $context = 'web'): Payment
@@ -50,7 +50,6 @@ class ConsultationPaymentService
         $scheduledAt = $consultation?->scheduled_at
             ? Carbon::parse($consultation->scheduled_at)->format('M d, Y g:i A')
             : 'completed session';
-        $appUrl = rtrim(config('app.url'), '/');
         $clientName = $payment->client?->name ?? 'Client';
         $clientEmail = $payment->client?->email ?? '';
         $isBalance = $payment->type === 'balance';
@@ -70,11 +69,11 @@ class ConsultationPaymentService
             ]);
         } else {
             $successUrl = $isBalance
-                ? $appUrl . '/payment/balance/success?payment_id=' . $payment->id
-                : $appUrl . '/payment/success?payment_id=' . $payment->id;
+                ? URL::route('payment.balance.success', ['payment_id' => $payment->id])
+                : URL::route('payment.success', ['payment_id' => $payment->id]);
             $cancelUrl = $isBalance
-                ? $appUrl . '/payment/balance/cancel?payment_id=' . $payment->id
-                : $appUrl . '/payment/cancel?payment_id=' . $payment->id;
+                ? URL::route('payment.balance.cancel', ['payment_id' => $payment->id])
+                : URL::route('payment.cancel', ['payment_id' => $payment->id]);
         }
 
         $checkout = $this->paymongo->createCheckoutSession(

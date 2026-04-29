@@ -34,6 +34,9 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
+            width: 100%;
+            max-width: 1180px;
+            margin: 0 auto;
             padding: 16px 20px;
             border: 1px solid rgba(148, 163, 184, 0.18);
             border-radius: 18px;
@@ -105,7 +108,11 @@
             display: grid;
             grid-template-columns: minmax(0, 1.7fr) minmax(300px, 360px);
             gap: 20px;
-            flex: 1;
+            align-items: start;
+            width: 100%;
+            max-width: 1180px;
+            margin: 0 auto;
+            flex: 0 1 auto;
         }
         .call-shell,
         .side-panel {
@@ -122,8 +129,10 @@
         }
         .video-stage {
             position: relative;
-            flex: 1;
-            min-height: 440px;
+            flex: 0 0 auto;
+            aspect-ratio: 16 / 9;
+            min-height: 360px;
+            max-height: 620px;
             background:
                 linear-gradient(180deg, rgba(15, 23, 42, 0.28), rgba(2, 6, 23, 0.88)),
                 #020617;
@@ -136,6 +145,9 @@
             object-fit: cover;
             display: block;
             background: #020617;
+        }
+        .local-video {
+            transform: scaleX(-1);
         }
         .remote-placeholder {
             position: absolute;
@@ -369,6 +381,7 @@
         @media (max-width: 1120px) {
             .layout {
                 grid-template-columns: 1fr;
+                max-width: 900px;
             }
             .local-tile {
                 width: min(34vw, 220px);
@@ -388,7 +401,9 @@
                 justify-content: flex-start;
             }
             .video-stage {
+                aspect-ratio: auto;
                 min-height: 320px;
+                max-height: none;
             }
             .local-tile {
                 width: 42vw;
@@ -542,9 +557,14 @@
     const peerName = @json($peerName);
     const signalingChannelName = @json($echoSignalingChannel);
     const presenceSignalingChannelName = @json($presenceSignalingChannel);
+    const callPresenceChannelName = (presenceSignalingChannelName || signalingChannelName).replace(/^presence-/, '');
     const statusUrl = @json(route('consultations.video.status', $consultation));
+    const heartbeatUrl = @json(route('consultations.video.heartbeat', $consultation));
+    const signalUrl = @json(route('consultations.video.signal', $consultation));
+    const signalsUrl = @json(route('consultations.video.signals', $consultation));
     const iceServers = @json($iceServers);
     const isClient = @json(Auth::user()->role !== 'lawyer');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     const localVideo = document.getElementById('localVideo');
     const remoteVideo = document.getElementById('remoteVideo');
@@ -571,6 +591,10 @@
     let isCameraOff = false;
     let balanceRedirecting = false;
     let isStarting = false;
+    let negotiationTimer = null;
+    let autoReconnectTimer = null;
+    let isMakingOffer = false;
+    const processedSignalIds = new Set();
 
     function setCallState(title, copy) {
         callStateTitle.textContent = title;
@@ -579,6 +603,7 @@
     }
 
     function updatePeerPresence(online) {
+        const becameOnline = online && !peerOnline;
         peerOnline = online;
         peerPresencePill.classList.toggle('offline', !online);
         peerPresenceText.textContent = online
@@ -588,7 +613,45 @@
         if (!online) {
             remotePlaceholder.classList.remove('hidden');
             remotePlaceholderCopy.textContent = 'We will connect as soon as both participants are on this page.';
+        } else if (becameOnline && !remoteStream) {
+            remotePlaceholderCopy.textContent = 'Both participants are online. Starting the secure video connection now.';
         }
+
+        if (becameOnline && !remoteStream) {
+            if (currentUserRole === 'lawyer') {
+                createOffer(true);
+            } else {
+                sendSignal({ type: 'peer-ready' });
+                scheduleOfferFallback();
+            }
+        }
+    }
+
+    function stopAutoReconnect() {
+        if (autoReconnectTimer) {
+            clearInterval(autoReconnectTimer);
+            autoReconnectTimer = null;
+        }
+    }
+
+    function startAutoReconnect() {
+        stopAutoReconnect();
+
+        let attempts = 0;
+        autoReconnectTimer = setInterval(function() {
+            if (remoteStream || attempts >= 12) {
+                stopAutoReconnect();
+                return;
+            }
+
+            attempts += 1;
+            sendHeartbeat();
+            sendSignal({ type: 'peer-ready' });
+
+            if (peerOnline) {
+                scheduleOfferFallback(700);
+            }
+        }, 1500);
     }
 
     async function ensureLocalMedia() {
@@ -638,6 +701,10 @@
 
     function teardownPeerConnection() {
         pendingIceCandidates = [];
+        if (negotiationTimer) {
+            clearTimeout(negotiationTimer);
+            negotiationTimer = null;
+        }
 
         if (peerConnection) {
             peerConnection.ontrack = null;
@@ -696,6 +763,11 @@
 
             remoteVideo.srcObject = remoteStream;
             remotePlaceholder.classList.add('hidden');
+            if (negotiationTimer) {
+                clearTimeout(negotiationTimer);
+                negotiationTimer = null;
+            }
+            stopAutoReconnect();
             setCallState(
                 'Call connected',
                 'Secure media is flowing between both consultation participants.'
@@ -750,23 +822,96 @@
         return peerConnection;
     }
 
-    function whisperSignal(payload) {
-        if (!presenceChannel || !peerId) {
-            return;
-        }
-
-        presenceChannel.whisper('signal', {
+    function makeSignalPayload(payload) {
+        return {
             ...payload,
+            signalId: payload.signalId || (currentUserId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2)),
             consultationId,
             fromUserId: currentUserId,
             fromRole: currentUserRole,
             targetUserId: peerId,
             sentAt: Date.now(),
+        };
+    }
+
+    function postSignal(payload) {
+        return fetch(signalUrl, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        }).catch(function(error) {
+            console.warn('HTTP signaling failed:', error);
         });
     }
 
-    async function createOffer() {
-        if (currentUserRole !== 'lawyer' || !peerOnline) {
+    function sendSignal(payload) {
+        if (!peerId) {
+            return;
+        }
+
+        const signalPayload = makeSignalPayload(payload);
+
+        if (presenceChannel) {
+            presenceChannel.whisper('signal', signalPayload);
+        }
+
+        postSignal(signalPayload);
+    }
+
+    function whisperSignal(payload) {
+        sendSignal(payload);
+    }
+
+    function serializeSessionDescription(description) {
+        return {
+            type: description.type,
+            sdp: description.sdp,
+        };
+    }
+
+    function normalizeSessionDescription(description) {
+        if (!description) {
+            return null;
+        }
+
+        const sdp = typeof description.sdp === 'string'
+            ? description.sdp.replace(/\r?\n/g, '\r\n').trim() + '\r\n'
+            : '';
+
+        return {
+            type: description.type,
+            sdp,
+        };
+    }
+
+    function scheduleOfferFallback(delay = 1800) {
+        if (negotiationTimer) {
+            clearTimeout(negotiationTimer);
+        }
+
+        negotiationTimer = setTimeout(function() {
+            negotiationTimer = null;
+
+            if (!peerOnline || remoteStream) {
+                return;
+            }
+
+            createOffer(true);
+        }, delay);
+    }
+
+    async function createOffer(force = false) {
+        if ((!force && currentUserRole !== 'lawyer') || !peerOnline) {
+            return;
+        }
+
+        if (isMakingOffer) {
             return;
         }
 
@@ -777,18 +922,24 @@
             return;
         }
 
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+        isMakingOffer = true;
 
-        whisperSignal({
-            type: 'offer',
-            sdp: offer,
-        });
+        try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
 
-        setCallState(
-            'Offer sent',
-            'Waiting for ' + (peerName || 'the other participant') + ' to answer the consultation call.'
-        );
+            whisperSignal({
+                type: 'offer',
+                sdp: serializeSessionDescription(pc.localDescription || offer),
+            });
+
+            setCallState(
+                'Offer sent',
+                'Waiting for ' + (peerName || 'the other participant') + ' to answer the consultation call.'
+            );
+        } finally {
+            isMakingOffer = false;
+        }
     }
 
     async function handleSignal(payload) {
@@ -796,10 +947,18 @@
             return;
         }
 
+        if (payload.signalId) {
+            if (processedSignalIds.has(payload.signalId)) {
+                return;
+            }
+            processedSignalIds.add(payload.signalId);
+        }
+
         try {
             if (payload.type === 'peer-ready') {
+                updatePeerPresence(true);
                 if (currentUserRole === 'lawyer') {
-                    await createOffer();
+                    await createOffer(true);
                 }
                 return;
             }
@@ -822,14 +981,18 @@
                 }
 
                 const refreshedPc = createPeerConnection();
-                await refreshedPc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                const remoteOffer = normalizeSessionDescription(payload.sdp);
+                if (!remoteOffer || remoteOffer.type !== 'offer' || !remoteOffer.sdp) {
+                    throw new Error('Received an invalid WebRTC offer.');
+                }
+                await refreshedPc.setRemoteDescription(new RTCSessionDescription(remoteOffer));
                 await flushPendingIceCandidates(refreshedPc);
                 const answer = await refreshedPc.createAnswer();
                 await refreshedPc.setLocalDescription(answer);
 
                 whisperSignal({
                     type: 'answer',
-                    sdp: answer,
+                    sdp: serializeSessionDescription(refreshedPc.localDescription || answer),
                 });
 
                 setCallState(
@@ -837,7 +1000,16 @@
                     'The call answer was sent. Finishing the direct media connection now.'
                 );
             } else if (payload.type === 'answer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+                if (pc.signalingState !== 'have-local-offer') {
+                    console.warn('Ignored stale WebRTC answer while in state:', pc.signalingState);
+                    return;
+                }
+
+                const remoteAnswer = normalizeSessionDescription(payload.sdp);
+                if (!remoteAnswer || remoteAnswer.type !== 'answer' || !remoteAnswer.sdp) {
+                    throw new Error('Received an invalid WebRTC answer.');
+                }
+                await pc.setRemoteDescription(new RTCSessionDescription(remoteAnswer));
                 await flushPendingIceCandidates(pc);
                 setCallState(
                     'Answer received',
@@ -868,7 +1040,7 @@
             return;
         }
 
-        presenceChannel = window.Echo.join(signalingChannelName)
+        presenceChannel = window.Echo.join(callPresenceChannelName)
             .here(function(users) {
                 const online = users.some(function(user) {
                     return Number(user.id) === Number(peerId);
@@ -881,6 +1053,7 @@
                         createOffer();
                     } else {
                         whisperSignal({ type: 'peer-ready' });
+                        scheduleOfferFallback();
                     }
                 }
             })
@@ -895,6 +1068,7 @@
                     createOffer();
                 } else {
                     whisperSignal({ type: 'peer-ready' });
+                    scheduleOfferFallback();
                 }
             })
             .leaving(function(user) {
@@ -910,6 +1084,63 @@
                 );
             })
             .listenForWhisper('signal', handleSignal);
+    }
+
+    function sendHeartbeat() {
+        fetch(heartbeatUrl, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ at: Date.now() }),
+        })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Heartbeat failed.');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                updatePeerPresence(Boolean(data.peer_online));
+            })
+            .catch(function(error) {
+                console.warn('Video heartbeat failed:', error);
+            });
+    }
+
+    function pollSignals() {
+        fetch(signalsUrl, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Signal poll failed.');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                (data.signals || []).forEach(function(signal) {
+                    handleSignal(signal);
+                });
+            })
+            .catch(function(error) {
+                console.warn('Video signal polling failed:', error);
+            });
+    }
+
+    function startFallbackSignaling() {
+        sendHeartbeat();
+        pollSignals();
+        setInterval(sendHeartbeat, 2500);
+        setInterval(pollSignals, 1200);
     }
 
     function updateMuteButton() {
@@ -936,6 +1167,8 @@
         try {
             await ensureLocalMedia();
             setupPresenceChannel();
+            startFallbackSignaling();
+            startAutoReconnect();
 
             if (isClient) {
                 setInterval(checkSessionStatus, 5000);
@@ -961,14 +1194,19 @@
         try {
             await ensureLocalMedia();
 
-            if (!presenceChannel) {
-                setupPresenceChannel();
+            if (presenceChannel && window.Echo) {
+                window.Echo.leave(callPresenceChannelName);
+                presenceChannel = null;
             }
 
-            if (currentUserRole === 'lawyer') {
-                await createOffer();
+            setupPresenceChannel();
+
+            sendHeartbeat();
+
+            if (currentUserRole === 'lawyer' && peerOnline) {
+                await createOffer(true);
             } else {
-                whisperSignal({ type: 'peer-ready' });
+                sendSignal({ type: 'peer-ready' });
                 setCallState(
                     'Reconnect requested',
                     'Waiting for ' + (peerName || 'the other participant') + ' to renegotiate the consultation call.'
@@ -987,7 +1225,7 @@
         whisperSignal({ type: 'hangup' });
 
         if (presenceChannel && window.Echo) {
-            window.Echo.leave(signalingChannelName);
+            window.Echo.leave(callPresenceChannelName);
             presenceChannel = null;
         }
 

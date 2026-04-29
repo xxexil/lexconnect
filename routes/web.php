@@ -221,6 +221,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/consultations/attach-document',         [ConsultationController::class,'attachDocument'])->name('consultations.attach-document');
     Route::get('/consultations/{consultation}/video',     [VideoCallController::class,   'join'])->name('consultations.video');
     Route::get('/consultations/{consultation}/video/status',[VideoCallController::class, 'status'])->name('consultations.video.status');
+    Route::post('/consultations/{consultation}/video/heartbeat',[VideoCallController::class, 'heartbeat'])->name('consultations.video.heartbeat');
+    Route::post('/consultations/{consultation}/video/signal',[VideoCallController::class, 'signal'])->name('consultations.video.signal');
+    Route::get('/consultations/{consultation}/video/signals',[VideoCallController::class, 'signals'])->name('consultations.video.signals');
     Route::post('/consultations/{consultation}/video/end',[VideoCallController::class,   'end'])->name('consultations.video.end');
 
     Route::get('/messages',      [MessageController::class,'index'])->name('messages');
