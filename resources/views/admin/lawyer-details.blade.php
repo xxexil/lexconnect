@@ -338,13 +338,16 @@
             <div style="text-align:center;padding:16px;background:#fff;border:1px solid #e7edf5;border-radius:18px;box-shadow:0 10px 24px rgba(15,23,42,.04);min-height:220px;">
                 <div style="color:#1e2d4d;font-size:.9rem;font-weight:800;margin-bottom:12px;">Government ID</div>
                 @if($lp->government_id_doc)
-                    @php $govExt = strtolower(pathinfo($lp->government_id_doc, PATHINFO_EXTENSION)); @endphp
+                    @php
+                        $govExt = strtolower(pathinfo($lp->government_id_doc, PATHINFO_EXTENSION));
+                        $govUrl = $lp->documentUrl('government_id');
+                    @endphp
                     @if(in_array($govExt, ['jpg','jpeg','png','gif','webp']))
-                        <a href="{{ asset('storage/' . $lp->government_id_doc) }}" target="_blank" rel="noopener">
-                            <img src="{{ asset('storage/' . $lp->government_id_doc) }}" alt="Government ID" style="width:100%;max-width:220px;border-radius:12px;border:1px solid #dee6f0;background:#f8fafc;">
+                        <a href="{{ $govUrl }}" target="_blank" rel="noopener">
+                            <img src="{{ $govUrl }}" alt="Government ID" style="width:100%;max-width:220px;border-radius:12px;border:1px solid #dee6f0;background:#f8fafc;">
                         </a>
                     @else
-                        <a href="{{ asset('storage/' . $lp->government_id_doc) }}" target="_blank" rel="noopener" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin-top:8px;min-height:130px;border:2px dashed #d7e0ec;border-radius:14px;background:#fbfcfe;color:#1e2d4d;font-weight:700;text-decoration:none;"><i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i><span>View PDF</span></a>
+                        <a href="{{ $govUrl }}" target="_blank" rel="noopener" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin-top:8px;min-height:130px;border:2px dashed #d7e0ec;border-radius:14px;background:#fbfcfe;color:#1e2d4d;font-weight:700;text-decoration:none;"><i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i><span>View PDF</span></a>
                     @endif
                 @else
                     <div style="color:#b45309;font-size:.95rem;margin-top:8px;min-height:130px;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff8e8;border:1px dashed #f3d08b;border-radius:14px;"><i class="fas fa-file-circle-minus"></i> No document submitted</div>
@@ -353,13 +356,16 @@
             <div style="text-align:center;padding:16px;background:#fff;border:1px solid #e7edf5;border-radius:18px;box-shadow:0 10px 24px rgba(15,23,42,.04);min-height:220px;">
                 <div style="color:#1e2d4d;font-size:.9rem;font-weight:800;margin-bottom:12px;">IBP ID</div>
                 @if($lp->ibp_id_doc)
-                    @php $ibpExt = strtolower(pathinfo($lp->ibp_id_doc, PATHINFO_EXTENSION)); @endphp
+                    @php
+                        $ibpExt = strtolower(pathinfo($lp->ibp_id_doc, PATHINFO_EXTENSION));
+                        $ibpUrl = $lp->documentUrl('ibp_id');
+                    @endphp
                     @if(in_array($ibpExt, ['jpg','jpeg','png','gif','webp']))
-                        <a href="{{ asset('storage/' . $lp->ibp_id_doc) }}" target="_blank" rel="noopener">
-                            <img src="{{ asset('storage/' . $lp->ibp_id_doc) }}" alt="IBP ID" style="width:100%;max-width:220px;border-radius:12px;border:1px solid #dee6f0;background:#f8fafc;">
+                        <a href="{{ $ibpUrl }}" target="_blank" rel="noopener">
+                            <img src="{{ $ibpUrl }}" alt="IBP ID" style="width:100%;max-width:220px;border-radius:12px;border:1px solid #dee6f0;background:#f8fafc;">
                         </a>
                     @else
-                        <a href="{{ asset('storage/' . $lp->ibp_id_doc) }}" target="_blank" rel="noopener" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin-top:8px;min-height:130px;border:2px dashed #d7e0ec;border-radius:14px;background:#fbfcfe;color:#1e2d4d;font-weight:700;text-decoration:none;"><i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i><span>View PDF</span></a>
+                        <a href="{{ $ibpUrl }}" target="_blank" rel="noopener" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;margin-top:8px;min-height:130px;border:2px dashed #d7e0ec;border-radius:14px;background:#fbfcfe;color:#1e2d4d;font-weight:700;text-decoration:none;"><i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i><span>View PDF</span></a>
                     @endif
                 @else
                     <div style="color:#b45309;font-size:.95rem;margin-top:8px;min-height:130px;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff8e8;border:1px dashed #f3d08b;border-radius:14px;"><i class="fas fa-file-circle-minus"></i> No document submitted</div>

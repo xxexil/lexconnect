@@ -47,21 +47,25 @@
         <div style="border-bottom:1px solid #eadfbe;margin-bottom:18px;"></div>
         <div class="lfd-doc-grid">
             @foreach([
-                'DTI/SEC Registration' => $firm->dti_sec_registration_doc,
-                'Business Permit' => $firm->business_permit_doc,
-                'Valid ID' => $firm->valid_id_doc,
-                'IBP ID' => $firm->ibp_id_doc,
-            ] as $label => $path)
+                'DTI/SEC Registration' => ['key' => 'dti_sec_registration', 'path' => $firm->dti_sec_registration_doc],
+                'Business Permit' => ['key' => 'business_permit', 'path' => $firm->business_permit_doc],
+                'Valid ID' => ['key' => 'valid_id', 'path' => $firm->valid_id_doc],
+                'IBP ID' => ['key' => 'ibp_id', 'path' => $firm->ibp_id_doc],
+            ] as $label => $doc)
                 <div class="lfd-doc-card">
                     <div class="lfd-doc-title">{{ $label }}</div>
+                    @php
+                        $path = $doc['path'];
+                        $url = $firm->documentUrl($doc['key']);
+                    @endphp
                     @if($path)
                         @php $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION)); @endphp
                         @if(in_array($ext, ['jpg','jpeg','png','gif','webp']))
-                            <a href="{{ asset('storage/' . $path) }}" target="_blank" rel="noopener" class="lfd-doc-link" style="border:none;background:transparent;min-height:auto;margin-top:0;">
-                                <img src="{{ asset('storage/' . $path) }}" alt="{{ $label }}">
+                            <a href="{{ $url }}" target="_blank" rel="noopener" class="lfd-doc-link" style="border:none;background:transparent;min-height:auto;margin-top:0;">
+                                <img src="{{ $url }}" alt="{{ $label }}">
                             </a>
                         @else
-                            <a href="{{ asset('storage/' . $path) }}" target="_blank" rel="noopener" class="lfd-doc-link">
+                            <a href="{{ $url }}" target="_blank" rel="noopener" class="lfd-doc-link">
                                 <i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i>
                                 <span>View PDF</span>
                             </a>

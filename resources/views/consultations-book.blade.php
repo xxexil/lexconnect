@@ -83,6 +83,15 @@
 .cb-btn-secondary { border:1.5px solid #d1d5db; color:#475569; background:#fff; flex:1; }
 .cb-btn-primary { border:none; background:#1e2d4d; color:#fff; flex:2; }
 .cb-errors { margin:0 0 16px; padding-left:18px; color:#b91c1c; font-size:.88rem; }
+.cb-modal-backdrop { position:fixed; inset:0; z-index:10000; display:none; align-items:center; justify-content:center; padding:18px; background:rgba(15,23,42,.48); backdrop-filter:blur(3px); }
+.cb-modal-backdrop.visible { display:flex; }
+.cb-modal { width:min(420px, 100%); border-radius:16px; background:#fff; border:1px solid #e5e7eb; box-shadow:0 24px 70px rgba(15,23,42,.28); overflow:hidden; }
+.cb-modal-body { padding:22px 22px 18px; }
+.cb-modal-icon { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:#fff7ed; color:#c2410c; margin-bottom:14px; }
+.cb-modal-title { margin:0; color:#1e2d4d; font-size:1.05rem; font-weight:800; }
+.cb-modal-message { margin:8px 0 0; color:#475569; line-height:1.55; font-size:.92rem; }
+.cb-modal-actions { display:flex; justify-content:flex-end; padding:14px 18px 18px; }
+.cb-modal-btn { border:none; border-radius:10px; padding:10px 16px; background:#1e2d4d; color:#fff; font:inherit; font-weight:800; cursor:pointer; }
 @media (max-width: 980px) {
     .cb-shell { grid-template-columns:1fr; }
     .cb-side { position:static; }
@@ -98,6 +107,7 @@
 @section('content')
 @php
     $profileStatus = $profile->currentStatus();
+    $minScheduledAt = now()->copy()->addMinute()->format('Y-m-d\TH:i');
 @endphp
 <a href="{{ $returnTo }}" class="cb-back"><i class="fas fa-arrow-left"></i> Back</a>
 
@@ -238,6 +248,7 @@
                             type="datetime-local"
                             name="scheduled_at"
                             value="{{ $selectedAt }}"
+                            min="{{ $minScheduledAt }}"
                             required
                         >
                     </div>
@@ -304,6 +315,19 @@
         </div>
     </section>
 </div>
+
+<div class="cb-modal-backdrop" id="cbBookingModal" role="dialog" aria-modal="true" aria-labelledby="cbBookingModalTitle" aria-hidden="true">
+    <div class="cb-modal">
+        <div class="cb-modal-body">
+            <div class="cb-modal-icon"><i class="fas fa-calendar-xmark"></i></div>
+            <h3 class="cb-modal-title" id="cbBookingModalTitle">Schedule unavailable</h3>
+            <p class="cb-modal-message" id="cbBookingModalMessage">Please choose an upcoming consultation time.</p>
+        </div>
+        <div class="cb-modal-actions">
+            <button type="button" class="cb-modal-btn" id="cbBookingModalOk">OK</button>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -327,10 +351,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const monthLabel = document.getElementById('cbCalMonth');
     const prevMonthBtn = document.getElementById('cbPrevMonth');
     const nextMonthBtn = document.getElementById('cbNextMonth');
+    const bookingModal = document.getElementById('cbBookingModal');
+    const bookingModalMessage = document.getElementById('cbBookingModalMessage');
+    const bookingModalOk = document.getElementById('cbBookingModalOk');
 
     let current = selectedInput.value ? new Date(selectedInput.value) : new Date();
     let selectedDate = selectedInput.value ? selectedInput.value.slice(0, 10) : null;
     let selectedSlot = selectedInput.value || null;
+    const minBookable = new Date(@json($minScheduledAt));
 
     function formatCurrency(amount) {
         return 'PHP ' + amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -343,6 +371,18 @@ document.addEventListener('DOMContentLoaded', function () {
         totalEl.textContent = formatCurrency(total);
         downpaymentEl.textContent = formatCurrency(downpayment);
         balanceEl.textContent = formatCurrency(total - downpayment);
+    }
+
+    function showBookingModal(message) {
+        bookingModalMessage.textContent = message;
+        bookingModal.classList.add('visible');
+        bookingModal.setAttribute('aria-hidden', 'false');
+        bookingModalOk.focus();
+    }
+
+    function hideBookingModal() {
+        bookingModal.classList.remove('visible');
+        bookingModal.setAttribute('aria-hidden', 'true');
     }
 
     function toLocalIso(date) {
@@ -374,6 +414,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function selectSlot(isoValue) {
+        const chosen = new Date(isoValue);
+        if (chosen < minBookable) {
+            showBookingModal('Please choose an upcoming consultation time.');
+            selectedInput.value = '';
+            selectedDate = null;
+            selectedSlot = null;
+            renderCalendar();
+            return;
+        }
+
         selectedSlot = isoValue;
         selectedInput.value = isoValue;
         selectedDate = isoValue.slice(0, 10);
@@ -481,7 +531,11 @@ document.addEventListener('DOMContentLoaded', function () {
             button.textContent = label;
             button.className = 'cb-slot';
 
-            if (bookedRanges.some(function (range) { return slotStart < range.end && slotEnd > range.start; })) {
+            if (slotStart < minBookable) {
+                button.classList.add('past');
+                button.disabled = true;
+                button.title = 'Please choose an upcoming time';
+            } else if (bookedRanges.some(function (range) { return slotStart < range.end && slotEnd > range.start; })) {
                 button.classList.add('booked');
                 button.disabled = true;
                 button.title = 'Already booked';
@@ -513,9 +567,32 @@ document.addEventListener('DOMContentLoaded', function () {
         renderCalendar();
     });
 
+    bookingModalOk.addEventListener('click', hideBookingModal);
+
+    bookingModal.addEventListener('click', function (event) {
+        if (event.target === bookingModal) {
+            hideBookingModal();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && bookingModal.classList.contains('visible')) {
+            hideBookingModal();
+        }
+    });
+
     selectedInput.addEventListener('change', function () {
         if (!selectedInput.value) return;
         const chosen = new Date(selectedInput.value);
+        if (chosen < minBookable) {
+            showBookingModal('Please choose an upcoming consultation time.');
+            selectedInput.value = '';
+            selectedDate = null;
+            selectedSlot = null;
+            renderCalendar();
+            slotsPanel.style.display = 'none';
+            return;
+        }
         current = new Date(chosen.getFullYear(), chosen.getMonth(), 1);
         selectSlot(selectedInput.value.slice(0, 16));
     });

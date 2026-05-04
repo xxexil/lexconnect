@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ConsultationController extends Controller
@@ -111,7 +112,6 @@ class ConsultationController extends Controller
 
         $profile = $lawyer->lawyerProfile;
         $bookingWindowStart = today()->startOfDay();
-        $bookingWindowEnd = now()->copy()->addDays(14);
         $blockedDates = LawyerBlockedDate::where('lawyer_id', $lawyer->id)
             ->where('blocked_date', '>=', today())
             ->orderBy('blocked_date')
@@ -120,7 +120,6 @@ class ConsultationController extends Controller
         $activeBookings = Consultation::where('lawyer_id', $lawyer->id)
             ->whereIn('status', ['pending', 'upcoming'])
             ->where('scheduled_at', '>=', $bookingWindowStart)
-            ->where('scheduled_at', '<=', $bookingWindowEnd)
             ->orderBy('scheduled_at')
             ->get();
 
@@ -191,6 +190,16 @@ class ConsultationController extends Controller
         }
 
         $selectedAt = old('scheduled_at', $request->query('scheduled_at'));
+        if ($selectedAt) {
+            try {
+                $selectedAtDate = Carbon::parse($selectedAt);
+                if ($selectedAtDate->isPast()) {
+                    $selectedAt = null;
+                }
+            } catch (\Throwable) {
+                $selectedAt = null;
+            }
+        }
         $returnTo = $request->query('return_to', route('find-lawyers'));
 
         return view('consultations-book', [
@@ -219,6 +228,13 @@ class ConsultationController extends Controller
         $lawyer = User::with('lawyerProfile')->findOrFail($request->lawyer_id);
 
         $scheduledAt = Carbon::parse($request->scheduled_at);
+
+        if ($scheduledAt->lte(now())) {
+            return back()
+                ->withInput()
+                ->withErrors(['scheduled_at' => 'Please choose a future date and time for your consultation.']);
+        }
+
         $endsAt = $scheduledAt->copy()->addMinutes((int) $request->duration);
         $scheduledDate = $scheduledAt->toDateString();
 
@@ -279,7 +295,7 @@ class ConsultationController extends Controller
 
         $docPath = null;
         if ($request->hasFile('case_document')) {
-            $docPath = $request->file('case_document')->store('case-documents', 'public');
+            $docPath = $request->file('case_document')->store('case-documents', 'local');
         }
 
         $consultation = Consultation::create([
@@ -428,6 +444,10 @@ class ConsultationController extends Controller
             }
 
             // Roll back the created records if PayMongo fails
+            if ($consultation->case_document) {
+                Storage::disk('local')->delete($consultation->case_document);
+                Storage::disk('public')->delete($consultation->case_document);
+            }
             Payment::where('consultation_id', $consultation->id)->delete();
             $consultation->delete();
 
@@ -453,7 +473,12 @@ class ConsultationController extends Controller
         if ($consultation->client_id !== Auth::id()) abort(403);
         if (!in_array($consultation->status, ['pending', 'upcoming'])) abort(403);
 
-        $path = $request->file('case_document')->store('case-documents', 'public');
+        if ($consultation->case_document) {
+            Storage::disk('local')->delete($consultation->case_document);
+            Storage::disk('public')->delete($consultation->case_document);
+        }
+
+        $path = $request->file('case_document')->store('case-documents', 'local');
         $consultation->update(['case_document' => $path]);
 
         return back()->with('success', 'Document uploaded successfully.');

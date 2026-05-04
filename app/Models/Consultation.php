@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class Consultation extends Model
 {
@@ -46,7 +45,7 @@ class Consultation extends Model
             return $this->case_document;
         }
 
-        return Storage::disk('public')->url($this->case_document);
+        return route(request()->is('api/*') ? 'api.documents.consultations.case' : 'documents.consultations.case', $this);
     }
 
     public function videoRoomName(): string

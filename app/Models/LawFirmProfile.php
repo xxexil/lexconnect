@@ -48,4 +48,39 @@ class LawFirmProfile extends Model
     {
         return rtrim(rtrim(number_format((float) $this->cut_percentage, 2, '.', ''), '0'), '.');
     }
+
+    public static function documentColumns(): array
+    {
+        return [
+            'dti_sec_registration' => 'dti_sec_registration_doc',
+            'business_permit' => 'business_permit_doc',
+            'valid_id' => 'valid_id_doc',
+            'ibp_id' => 'ibp_id_doc',
+        ];
+    }
+
+    public function documentPath(string $document): ?string
+    {
+        $column = static::documentColumns()[$document] ?? null;
+
+        return $column ? $this->{$column} : null;
+    }
+
+    public function documentUrl(string $document): ?string
+    {
+        $path = $this->documentPath($document);
+
+        if (!$path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        return route('documents.law-firms.document', [
+            'lawFirmProfile' => $this,
+            'document' => $document,
+        ]);
+    }
 }

@@ -383,8 +383,8 @@
                     <div class="lc-actions">
                         <a class="lc-book-btn"
                             href="{{ route('consultations.create', ['lawyer' => $lp->user_id, 'return_to' => url()->full()]) }}">
-                            <i class="fas fa-{{ $lawyerStatus === 'active' ? 'video' : 'calendar-check' }}"></i>
-                            {{ $lawyerStatus === 'active' ? 'Book Now' : 'View Slots' }}
+                            <i class="fas fa-calendar-check"></i>
+                            Book Now
                         </a>
                         <a href="{{ route('lawyer.public-profile', $lp->user_id) }}" class="lc-icon-btn" title="View Profile">
                             <i class="fas fa-user"></i>

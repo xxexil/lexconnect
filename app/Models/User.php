@@ -21,7 +21,7 @@ class User extends Authenticatable implements \Illuminate\Contracts\Auth\MustVer
      * @var list<string>
      */
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'avatar', 'phone', 'bio',
+        'name', 'email', 'password', 'role', 'avatar', 'phone', 'bio', 'location', 'last_login_at',
     ];
 
     /**
@@ -32,6 +32,7 @@ class User extends Authenticatable implements \Illuminate\Contracts\Auth\MustVer
     {
         if (!$this->avatar) return null;
         if (str_starts_with($this->avatar, 'http')) return $this->avatar;
+        if (!Storage::disk('public')->exists($this->avatar)) return null;
         return asset('storage/' . $this->avatar);
     }
 
@@ -82,6 +83,7 @@ class User extends Authenticatable implements \Illuminate\Contracts\Auth\MustVer
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at'     => 'datetime',
             'password' => 'hashed',
         ];
     }

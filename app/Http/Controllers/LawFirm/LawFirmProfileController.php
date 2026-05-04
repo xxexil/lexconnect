@@ -53,9 +53,10 @@ class LawFirmProfileController extends Controller
         ] as $input => $column) {
             if ($request->hasFile($input)) {
                 if ($firm->{$column}) {
+                    Storage::disk('local')->delete($firm->{$column});
                     Storage::disk('public')->delete($firm->{$column});
                 }
-                $docUpdates[$column] = $request->file($input)->store('law-firm-docs', 'public');
+                $docUpdates[$column] = $request->file($input)->store('law-firm-docs', 'local');
             }
         }
 

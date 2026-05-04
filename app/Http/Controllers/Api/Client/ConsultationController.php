@@ -75,7 +75,7 @@ class ConsultationController extends Controller
 
         $docPath = null;
         if ($request->hasFile('case_document')) {
-            $docPath = $request->file('case_document')->store('case-documents', 'public');
+            $docPath = $request->file('case_document')->store('case-documents', 'local');
         }
 
         $consultation = Consultation::create([

@@ -19,11 +19,12 @@ class ClientProfileController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'name'   => 'required|string|max:100',
-            'email'  => 'required|email|unique:users,email,' . $user->id,
-            'phone'  => 'nullable|string|max:20',
-            'bio'    => 'nullable|string|max:500',
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'name'     => 'required|string|max:100',
+            'email'    => 'required|email|unique:users,email,' . $user->id,
+            'phone'    => 'nullable|string|max:20',
+            'bio'      => 'nullable|string|max:500',
+            'location' => 'nullable|string|max:100',
+            'avatar'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
         if ($request->hasFile('avatar')) {
@@ -34,10 +35,11 @@ class ClientProfileController extends Controller
             $user->avatar = $path;
         }
 
-        $user->name  = $request->name;
-        $user->email = $request->email;
-        $user->phone = $request->phone;
-        $user->bio   = $request->bio;
+        $user->name     = $request->name;
+        $user->email    = $request->email;
+        $user->phone    = $request->phone;
+        $user->bio      = $request->bio;
+        $user->location = $request->location;
         $user->save();
 
         return back()->with('success', 'Profile updated successfully.');

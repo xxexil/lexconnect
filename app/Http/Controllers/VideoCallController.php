@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Consultation;
-use App\Models\Payment;
-use App\Services\ConsultationPaymentService;
 use App\Services\WebRtcConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -52,7 +50,7 @@ class VideoCallController extends Controller
         ]);
     }
 
-    public function end(Consultation $consultation, ConsultationPaymentService $paymentService)
+    public function end(Consultation $consultation)
     {
         $user = Auth::user();
 
@@ -62,21 +60,9 @@ class VideoCallController extends Controller
 
         if ($consultation->status === 'upcoming') {
             $consultation->update(['status' => 'completed']);
-
-            $balance = Payment::where('consultation_id', $consultation->id)
-                ->where('type', 'balance')
-                ->where('status', 'pending')
-                ->first();
-
-            if ($balance) {
-                $paymentService->createBalanceCheckout(
-                    $balance->loadMissing(['consultation', 'client', 'lawyer']),
-                    forceRefresh: true
-                );
-            }
         }
 
-        return redirect()->route('lawyer.consultations')->with('success', 'Session ended and the final balance request has been prepared for the client.');
+        return redirect()->route('lawyer.consultations')->with('success', 'Session ended. The client can now proceed to the remaining balance payment.');
     }
 
     public function status(Consultation $consultation)
@@ -136,9 +122,10 @@ class VideoCallController extends Controller
             : $consultation->client_id);
 
         $payload = $request->validate([
-            'type' => ['required', 'string', 'in:peer-ready,hangup,offer,answer,ice-candidate'],
+            'type' => ['required', 'string', 'in:peer-ready,hangup,offer,answer,ice-candidate,screen-share-start,screen-share-stop,audio-muted'],
             'sdp' => ['nullable', 'array'],
             'candidate' => ['nullable', 'array'],
+            'muted' => ['nullable', 'boolean'],
             'signalId' => ['nullable', 'string'],
             'sentAt' => ['nullable', 'integer'],
         ]);

@@ -122,10 +122,15 @@
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon red"><i class="fas fa-undo"></i></div>
+        <div class="stat-icon {{ $totalRefunded > 0 ? 'red' : 'blue' }}"><i class="fas fa-{{ $totalRefunded > 0 ? 'undo' : 'calendar-alt' }}"></i></div>
         <div class="stat-info">
+            @if($totalRefunded > 0)
             <span class="stat-value">₱{{ number_format($totalRefunded,0) }}</span>
             <span class="stat-label">Refunded</span>
+            @else
+            <span class="stat-value">₱{{ number_format($thisMonthSpent,0) }}</span>
+            <span class="stat-label">This Month</span>
+            @endif
         </div>
     </div>
     <div class="stat-card">
@@ -172,6 +177,16 @@
             </select>
         </div>
 
+        <div class="pay-field">
+            <label for="payDateFrom">From</label>
+            <input id="payDateFrom" type="date" name="date_from" value="{{ request('date_from') }}" class="pay-input" style="min-width:140px;">
+        </div>
+
+        <div class="pay-field">
+            <label for="payDateTo">To</label>
+            <input id="payDateTo" type="date" name="date_to" value="{{ request('date_to') }}" class="pay-input" style="min-width:140px;">
+        </div>
+
         <div class="pay-actions">
             <button type="submit" class="pay-btn pay-btn-primary">
                 <i class="fas fa-search"></i> Apply
@@ -212,24 +227,45 @@
                 $typeLabels = ['downpayment' => 'Downpayment 50%', 'balance' => 'Balance 50%', 'full' => 'Full'];
                 $typeLabel  = $typeLabels[$p->type] ?? ucfirst($p->type ?? 'full');
                 $statusLabel = $p->status === 'downpayment_paid' ? 'Paid (Down)' : ucfirst(str_replace('_',' ',$p->status));
+                $isUrgent = $p->type === 'balance' && $p->status === 'pending';
             @endphp
-            <tr style="border-bottom:1px solid #f8f9fa;">
-                <td style="padding:14px 16px;font-weight:600;font-size:.9rem;color:#1e2d4d;">{{ $p->lawyer->name }}</td>
+            <tr style="border-bottom:1px solid #f8f9fa;{{ $isUrgent ? 'background:#fffbeb;' : '' }}">
+                <td style="padding:14px 16px;font-weight:600;font-size:.9rem;color:#1e2d4d;">
+                    {{ $p->lawyer->name }}
+                </td>
                 <td style="padding:14px 16px;">
                     @if($p->consultation)
-                        <div style="font-size:.88rem;color:#555;">{{ $p->consultation->code }}</div>
+                        <a href="{{ route('consultations', ['section' => 'completed']) }}"
+                           style="font-size:.88rem;color:#2563eb;font-weight:600;text-decoration:none;"
+                           title="View consultation">
+                            {{ $p->consultation->code }}
+                        </a>
                         <div style="font-size:.78rem;color:#888;">{{ ucfirst($p->consultation->type) }}, {{ $p->consultation->duration_minutes }} min</div>
                     @else
                         <span style="color:#aaa;">—</span>
                     @endif
                 </td>
-                <td style="padding:14px 16px;font-size:.85rem;color:#555;">{{ $typeLabel }}</td>
+                <td style="padding:14px 16px;font-size:.85rem;color:#555;">
+                    {{ $typeLabel }}
+                    @if($isUrgent)
+                        <span style="display:inline-flex;align-items:center;gap:3px;font-size:.7rem;font-weight:700;color:#d97706;margin-left:4px;">
+                            <i class="fas fa-exclamation-circle"></i> Due
+                        </span>
+                    @endif
+                </td>
                 <td style="padding:14px 16px;font-size:.88rem;color:#555;">{{ $p->created_at->format('M d, Y') }}</td>
                 <td style="padding:14px 16px;text-align:right;font-weight:700;color:#1e2d4d;">₱{{ number_format($p->amount,2) }}</td>
                 <td style="padding:14px 16px;text-align:center;">
-                    <span style="background:{{ $bg }};color:{{ $fg }};border-radius:12px;padding:4px 12px;font-size:.78rem;font-weight:600;">
-                        {{ $statusLabel }}
-                    </span>
+                    @if($isUrgent)
+                        <a href="{{ route('payment.balance.start', $p) }}"
+                           style="display:inline-flex;align-items:center;gap:5px;background:#d97706;color:#fff;border-radius:8px;padding:5px 12px;font-size:.78rem;font-weight:700;text-decoration:none;white-space:nowrap;">
+                            <i class="fas fa-credit-card"></i> Pay Now
+                        </a>
+                    @else
+                        <span style="background:{{ $bg }};color:{{ $fg }};border-radius:12px;padding:4px 12px;font-size:.78rem;font-weight:600;">
+                            {{ $statusLabel }}
+                        </span>
+                    @endif
                 </td>
             </tr>
             @empty

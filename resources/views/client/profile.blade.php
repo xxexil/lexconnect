@@ -85,11 +85,23 @@
     <div class="cp-alert-success"><i class="fas fa-check-circle"></i> {{ session('success') }}</div>
     @endif
 
+    @if($errors->any())
+    <div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;border-radius:10px;padding:12px 18px;margin-bottom:20px;font-size:.9rem;">
+        <i class="fas fa-exclamation-circle"></i>
+        <strong>Please fix the following:</strong>
+        <ul style="margin:6px 0 0 18px;padding:0;">
+            @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
     @php
         $user = Auth::user();
         $initials = collect(explode(' ', $user->name))->map(fn($p) => strtoupper($p[0]))->implode('');
         $totalConsultations = \App\Models\Consultation::where('client_id', $user->id)->count();
-        $totalSpent = \App\Models\Payment::where('client_id', $user->id)->where('status','paid')->sum('amount');
+        $totalSpent = \App\Models\Payment::where('client_id', $user->id)->whereIn('status', ['paid', 'downpayment_paid'])->sum('amount');
         $memberSince = $user->created_at->format('M Y');
     @endphp
 
@@ -166,8 +178,16 @@
                         value="{{ old('phone', $user->phone) }}" placeholder="+63 912 345 6789">
                 </div>
                 <div class="cp-field">
+                    <label class="cp-label">Location <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
+                    <input type="text" name="location" class="cp-input"
+                        value="{{ old('location', $user->location) }}" placeholder="e.g. Makati, Metro Manila">
+                </div>
+                <div class="cp-field">
                     <label class="cp-label">Account Role</label>
                     <div class="cp-role-badge"><i class="fas fa-user"></i> {{ ucfirst($user->role) }}</div>
+                    @if($user->last_login_at)
+                    <span style="font-size:.75rem;color:#9ca3af;margin-top:4px;"><i class="fas fa-clock"></i> Last login: {{ $user->last_login_at->format('M d, Y g:i A') }}</span>
+                    @endif
                 </div>
                 <div class="cp-field span2">
                     <label class="cp-label">Bio <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>

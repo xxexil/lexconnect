@@ -281,8 +281,8 @@
         <p>Here's your legal services overview for today</p>
     </div>
     <div class="db-hero-badges">
-        <div class="db-hero-badge" data-this-month-spent="{{ number_format($thisMonthSpent, 0) }}">
-            <span class="badge-num">₱{{ number_format($totalSpent, 0) }}</span>
+        <div class="db-hero-badge">
+            <span class="badge-num">₱{{ number_format($thisMonthSpent, 0) }}</span>
             <div class="badge-lbl">Spent This Month</div>
             <div style="font-size:.72rem;color:#059669;margin-top:4px;font-weight:600;">Lifetime total: &#8369;{{ number_format($totalSpent, 0) }}</div>
         </div>
@@ -327,14 +327,17 @@
         <div class="db-card">
             <div class="db-card-header">
                 <span class="db-card-title">My Appointments</span>
-                <a href="{{ route('find-lawyers') }}" class="db-card-link">Book New +</a>
+                <a href="{{ route('consultations') }}" class="db-card-link">View All &rarr;</a>
             </div>
 
-            <div class="db-tabs">
-                <button class="db-tab active" onclick="dbTab('upcoming',this)">Upcoming</button>
-                <button class="db-tab" onclick="dbTab('completed',this)">Completed</button>
-                <button class="db-tab" onclick="dbTab('cancelled',this)">Cancelled</button>
-                <button class="db-tab" onclick="dbTab('expired',this)">Expired</button>
+            <div class="db-tabs" style="justify-content:space-between;align-items:center;">
+                <div style="display:flex;gap:0;">
+                    <button class="db-tab active" onclick="dbTab('upcoming',this)">Upcoming</button>
+                    <button class="db-tab" onclick="dbTab('completed',this)">Completed</button>
+                    <button class="db-tab" onclick="dbTab('cancelled',this)">Cancelled</button>
+                    <button class="db-tab" onclick="dbTab('expired',this)">Expired</button>
+                </div>
+                <a href="{{ route('find-lawyers') }}" class="db-card-link" style="white-space:nowrap;padding-bottom:4px;">Book New +</a>
             </div>
 
             {{-- Upcoming tab --}}
@@ -429,6 +432,24 @@
                         <span><i class="fas fa-{{ $c->type === 'video' ? 'video' : ($c->type === 'phone' ? 'phone' : 'building') }}"></i> {{ ucfirst($c->type) }}</span>
                         <span class="price"><i class="fas fa-peso-sign"></i> {{ number_format($c->price, 0) }}</span>
                     </div>
+                    <div class="appt-btns">
+                        @if($c->review)
+                        <span class="appt-btn-join disabled" style="background:#ecfdf5;color:#059669;cursor:default;">
+                            <i class="fas fa-star"></i>
+                            Reviewed &bull;
+                            @for($i=1;$i<=5;$i++)<i class="fas fa-star" style="font-size:.7rem;color:{{ $i <= $c->review->rating ? '#f59e0b' : '#d1d5db' }};"></i>@endfor
+                        </span>
+                        @else
+                        <button type="button" class="appt-btn-join"
+                            onclick="openReviewModal({{ $c->id }}, '{{ addslashes($c->lawyer->name) }}')"
+                            style="background:#f59e0b;">
+                            <i class="fas fa-star"></i> Leave a Review
+                        </button>
+                        @endif
+                        <a href="{{ route('find-lawyers') }}?lawyer_id={{ $c->lawyer_id }}" class="appt-btn-cancel">
+                            <i class="fas fa-redo"></i> Rebook
+                        </a>
+                    </div>
                 </div>
                 @empty
                 <div class="appt-empty">
@@ -465,6 +486,11 @@
                         <span><i class="fas fa-{{ $c->type === 'video' ? 'video' : ($c->type === 'phone' ? 'phone' : 'building') }}"></i> {{ ucfirst($c->type) }}</span>
                         <span class="price"><i class="fas fa-peso-sign"></i> {{ number_format($c->price, 0) }}</span>
                     </div>
+                    <div class="appt-btns">
+                        <a href="{{ route('find-lawyers') }}?lawyer_id={{ $c->lawyer_id }}" class="appt-btn-join">
+                            <i class="fas fa-redo"></i> Rebook
+                        </a>
+                    </div>
                 </div>
                 @empty
                 <div class="appt-empty">
@@ -500,6 +526,11 @@
                         <span><i class="fas fa-clock"></i> {{ $scheduled->format('g:i A') }} &bull; {{ $c->duration_label }}</span>
                         <span><i class="fas fa-{{ $c->type === 'video' ? 'video' : ($c->type === 'phone' ? 'phone' : 'building') }}"></i> {{ ucfirst($c->type) }}</span>
                         <span class="price"><i class="fas fa-peso-sign"></i> {{ number_format($c->price, 0) }}</span>
+                    </div>
+                    <div class="appt-btns">
+                        <a href="{{ route('find-lawyers') }}?lawyer_id={{ $c->lawyer_id }}" class="appt-btn-join">
+                            <i class="fas fa-redo"></i> Rebook
+                        </a>
                     </div>
                 </div>
                 @empty
@@ -651,16 +682,51 @@
 
 </div>{{-- end db-main --}}
 
+{{-- Review Modal --}}
+<div id="reviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:32px;width:100%;max-width:460px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h3 style="font-size:1.1rem;font-weight:700;color:#1e2d4d;margin:0;">Leave a Review</h3>
+            <button onclick="closeReviewModal()" style="background:none;border:none;font-size:1.3rem;color:#9ca3af;cursor:pointer;">&times;</button>
+        </div>
+        <p id="reviewModalLawyer" style="font-size:.88rem;color:#6b7280;margin-bottom:18px;"></p>
+        <form id="reviewForm" method="POST" action="{{ route('reviews.store') }}">
+            @csrf
+            <input type="hidden" name="consultation_id" id="reviewConsultationId">
+            <div style="margin-bottom:18px;">
+                <label style="font-size:.78rem;font-weight:600;color:#6b7280;display:block;margin-bottom:8px;">Rating</label>
+                <div id="starRating" style="display:flex;gap:6px;">
+                    @for($i=1;$i<=5;$i++)
+                    <button type="button" data-star="{{ $i }}"
+                        onclick="setRating({{ $i }})"
+                        style="background:none;border:none;font-size:1.8rem;cursor:pointer;color:#d1d5db;padding:0;line-height:1;transition:color .15s;">
+                        <i class="fas fa-star"></i>
+                    </button>
+                    @endfor
+                </div>
+                <input type="hidden" name="rating" id="reviewRating" value="">
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="font-size:.78rem;font-weight:600;color:#6b7280;display:block;margin-bottom:6px;">Comment <span style="font-weight:400;">(optional)</span></label>
+                <textarea name="comment" rows="3" maxlength="1000"
+                    style="width:100%;padding:10px 12px;border:1px solid #e2e6ea;border-radius:8px;font-size:.88rem;font-family:inherit;resize:vertical;box-sizing:border-box;"
+                    placeholder="Share your experience..."></textarea>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="button" onclick="closeReviewModal()"
+                    style="flex:1;padding:11px;border-radius:10px;background:#f4f6f8;color:#6b7280;border:none;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                    Cancel
+                </button>
+                <button type="submit" id="reviewSubmitBtn"
+                    style="flex:1;padding:11px;border-radius:10px;background:#f59e0b;color:#fff;border:none;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;">
+                    Submit Review
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    var heroBadge = document.querySelector('.db-hero-badge[data-this-month-spent]');
-    var heroBadgeValue = heroBadge ? heroBadge.querySelector('.badge-num') : null;
-
-    if (heroBadge && heroBadgeValue) {
-        heroBadgeValue.innerHTML = '&#8369;' + heroBadge.dataset.thisMonthSpent;
-    }
-});
-
 function dbTab(name, el) {
     ['upcoming','completed','cancelled','expired'].forEach(function(t) {
         document.getElementById('dbt-'+t).style.display = t === name ? '' : 'none';
@@ -668,6 +734,37 @@ function dbTab(name, el) {
     document.querySelectorAll('.db-tab').forEach(function(btn) { btn.classList.remove('active'); });
     el.classList.add('active');
 }
+
+function openReviewModal(consultationId, lawyerName) {
+    document.getElementById('reviewConsultationId').value = consultationId;
+    document.getElementById('reviewModalLawyer').textContent = 'Rating your consultation with ' + lawyerName;
+    document.getElementById('reviewRating').value = '';
+    setRating(0);
+    document.getElementById('reviewModal').style.display = 'flex';
+}
+
+function closeReviewModal() {
+    document.getElementById('reviewModal').style.display = 'none';
+}
+
+function setRating(val) {
+    document.getElementById('reviewRating').value = val;
+    document.querySelectorAll('#starRating button').forEach(function(btn) {
+        btn.style.color = parseInt(btn.dataset.star) <= val ? '#f59e0b' : '#d1d5db';
+    });
+}
+
+document.getElementById('reviewForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('reviewRating').value) {
+        e.preventDefault();
+        alert('Please select a star rating before submitting.');
+    }
+});
+
+// Close modal on backdrop click
+document.getElementById('reviewModal').addEventListener('click', function(e) {
+    if (e.target === this) closeReviewModal();
+});
 </script>
 
 @endsection

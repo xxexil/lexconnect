@@ -119,11 +119,11 @@ $tabs = [
                 @endif
                 @if($c->case_document)
                 <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-                    <a href="{{ asset('storage/' . $c->case_document) }}" target="_blank" rel="noopener"
+                    <a href="{{ route('documents.consultations.case', $c) }}" target="_blank" rel="noopener"
                        style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;color:#2563eb;background:#eff6ff;padding:4px 12px;border-radius:7px;text-decoration:none;border:1px solid #bfdbfe;">
                         <i class="fas fa-paperclip"></i> View
                     </a>
-                    <a href="{{ asset('storage/' . $c->case_document) }}" download
+                    <a href="{{ route('documents.consultations.case', ['consultation' => $c, 'download' => 1]) }}"
                        style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;color:#16a34a;background:#f0fdf4;padding:4px 12px;border-radius:7px;text-decoration:none;border:1px solid #bbf7d0;">
                         <i class="fas fa-download"></i> Download
                     </a>

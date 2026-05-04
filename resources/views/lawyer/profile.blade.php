@@ -203,7 +203,7 @@
                 <div class="lp-form-group">
                     <label class="lp-form-label">Government ID</label>
                     @if($profile->government_id_doc)
-                        <a href="{{ asset('storage/' . $profile->government_id_doc) }}" target="_blank" rel="noopener"
+                        <a href="{{ $profile->documentUrl('government_id') }}" target="_blank" rel="noopener"
                            style="display:inline-flex;align-items:center;gap:7px;margin-bottom:8px;color:#2563eb;font-size:.86rem;font-weight:700;text-decoration:none;">
                             <i class="fas fa-id-card"></i> View current Government ID
                         </a>
@@ -217,7 +217,7 @@
                 <div class="lp-form-group">
                     <label class="lp-form-label">IBP ID</label>
                     @if($profile->ibp_id_doc)
-                        <a href="{{ asset('storage/' . $profile->ibp_id_doc) }}" target="_blank" rel="noopener"
+                        <a href="{{ $profile->documentUrl('ibp_id') }}" target="_blank" rel="noopener"
                            style="display:inline-flex;align-items:center;gap:7px;margin-bottom:8px;color:#2563eb;font-size:.86rem;font-weight:700;text-decoration:none;">
                             <i class="fas fa-file-certificate"></i> View current IBP ID
                         </a>

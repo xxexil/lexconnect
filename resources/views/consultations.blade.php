@@ -457,7 +457,7 @@
         {{-- Case Document --}}
         @if($c->case_document)
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-            <a href="{{ Storage::url($c->case_document) }}" target="_blank"
+            <a href="{{ $c->case_document_url }}" target="_blank"
                style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;font-weight:600;color:#2563eb;text-decoration:none;background:#eff8ff;border:1px solid #bfdbfe;border-radius:7px;padding:5px 11px;">
                 <i class="fas fa-paperclip"></i> View Attached Document
             </a>
@@ -478,6 +478,8 @@
     <div class="mc-right">
         <span class="mc-badge pending"><span class="dot"></span> Pending Approval</span>
         <div class="mc-price">₱{{ number_format($c->price, 0) }}</div>
+        @php $cancelDeadline = \Carbon\Carbon::parse($c->scheduled_at)->subHour(); @endphp
+        @if(now()->lt($cancelDeadline))
         <form method="POST" action="{{ route('consultations.cancel', $c) }}">
             @csrf
             <button type="submit" class="mc-btn-cancel"
@@ -485,6 +487,9 @@
                 <i class="fas fa-times"></i> Cancel Request
             </button>
         </form>
+        @else
+        <span style="font-size:.75rem;color:#9ca3af;text-align:right;">Cannot cancel within<br>1 hour of session</span>
+        @endif
     </div>
 </div>
 @endforeach
@@ -525,7 +530,7 @@
         {{-- Case Document --}}
         @if($c->case_document)
         <div style="margin-top:8px;">
-            <a href="{{ Storage::url($c->case_document) }}" target="_blank"
+            <a href="{{ $c->case_document_url }}" target="_blank"
                style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;font-weight:600;color:#2563eb;text-decoration:none;background:#eff8ff;border:1px solid #bfdbfe;border-radius:7px;padding:5px 11px;">
                 <i class="fas fa-paperclip"></i> View Attached Document
             </a>
@@ -536,10 +541,22 @@
         <span class="mc-badge upcoming"><span class="dot"></span> Upcoming</span>
         <div class="mc-price">₱{{ number_format($c->price, 0) }}</div>
         @if($c->type === 'video')
+        @php
+            $joinOpensAt = $c->videoJoinOpensAt();
+            $canJoin     = $c->canJoinVideoCall();
+        @endphp
+        @if($canJoin)
         <a href="{{ route('consultations.video', $c) }}" class="mc-btn-join">
             <i class="fas fa-video"></i> Join Video Call
         </a>
+        @else
+        <span class="mc-btn-join" style="background:#d1d5db;color:#6b7280;cursor:not-allowed;" title="Available at {{ $joinOpensAt->format('g:i A') }}">
+            <i class="fas fa-clock"></i> Available {{ $joinOpensAt->format('g:i A') }}
+        </span>
         @endif
+        @endif
+        @php $cancelDeadline = \Carbon\Carbon::parse($c->scheduled_at)->subHour(); @endphp
+        @if(now()->lt($cancelDeadline))
         <form method="POST" action="{{ route('consultations.cancel', $c) }}">
             @csrf
             <button type="submit" class="mc-btn-cancel"
@@ -547,6 +564,9 @@
                 <i class="fas fa-times"></i> Cancel
             </button>
         </form>
+        @else
+        <span style="font-size:.75rem;color:#9ca3af;text-align:right;">Cannot cancel within<br>1 hour of session</span>
+        @endif
     </div>
 </div>
 @endforeach
@@ -591,6 +611,14 @@
                 </button>
             @endif
         </div>
+        @if($c->case_document)
+        <div style="margin-top:8px;">
+            <a href="{{ $c->case_document_url }}" target="_blank"
+               style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;font-weight:600;color:#2563eb;text-decoration:none;background:#eff8ff;border:1px solid #bfdbfe;border-radius:7px;padding:5px 11px;">
+                <i class="fas fa-paperclip"></i> View Attached Document
+            </a>
+        </div>
+        @endif
         @if($balancePayment)
         <div style="margin-top:10px;font-size:.82rem;color:#475569;">
             Remaining balance:
@@ -638,12 +666,28 @@
         <div class="mc-specialty">{{ optional($c->lawyer->lawyerProfile)->specialty ?? 'Attorney at Law' }}</div>
         <div class="mc-meta">
             <span class="mc-meta-item"><i class="fas fa-calendar"></i> {{ $sched->format('M d, Y') }}</span>
+            <span class="mc-meta-item"><i class="fas fa-clock"></i> {{ $sched->format('g:i A') }}</span>
             <span class="mc-meta-item"><i class="fas fa-stopwatch"></i> {{ $c->duration_label }}</span>
+            <span class="mc-type">
+                <i class="fas fa-{{ $c->type === 'video' ? 'video' : ($c->type === 'phone' ? 'phone' : 'building') }}"></i>
+                {{ ucfirst($c->type) }}
+            </span>
         </div>
+        @if($c->case_document)
+        <div style="margin-top:8px;">
+            <a href="{{ $c->case_document_url }}" target="_blank"
+               style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;font-weight:600;color:#2563eb;text-decoration:none;background:#eff8ff;border:1px solid #bfdbfe;border-radius:7px;padding:5px 11px;">
+                <i class="fas fa-paperclip"></i> View Attached Document
+            </a>
+        </div>
+        @endif
     </div>
     <div class="mc-right">
         <span class="mc-badge cancelled"><span class="dot"></span> Cancelled</span>
         <div class="mc-price" style="color:#9ca3af;">₱{{ number_format($c->price, 0) }}</div>
+        <a href="{{ route('find-lawyers') }}?lawyer_id={{ $c->lawyer_id }}" class="mc-btn-join" style="background:#6b7280;">
+            <i class="fas fa-redo"></i> Rebook
+        </a>
     </div>
 </div>
 @endforeach
@@ -679,10 +723,21 @@
                 {{ ucfirst($c->type) }}
             </span>
         </div>
+        @if($c->case_document)
+        <div style="margin-top:8px;">
+            <a href="{{ $c->case_document_url }}" target="_blank"
+               style="display:inline-flex;align-items:center;gap:5px;font-size:.8rem;font-weight:600;color:#6b7280;text-decoration:none;background:#f3f4f6;border:1px solid #d1d5db;border-radius:7px;padding:5px 11px;">
+                <i class="fas fa-paperclip"></i> View Attached Document
+            </a>
+        </div>
+        @endif
     </div>
     <div class="mc-right">
         <span class="mc-badge expired"><span class="dot"></span> Expired</span>
         <div class="mc-price" style="color:#6b7280;">&#8369;{{ number_format($c->price, 0) }}</div>
+        <a href="{{ route('find-lawyers') }}?lawyer_id={{ $c->lawyer_id }}" class="mc-btn-join" style="background:#6b7280;">
+            <i class="fas fa-redo"></i> Rebook
+        </a>
     </div>
 </div>
 @endforeach

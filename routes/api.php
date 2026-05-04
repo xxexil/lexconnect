@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\LawFirm\ConsultationController as LawFirmConsultati
 use App\Http\Controllers\Api\LawFirm\EarningsController as LawFirmEarningsController;
 use App\Http\Controllers\Api\LawFirm\MessageController as LawFirmMessageController;
 use App\Http\Controllers\Api\LawFirm\ProfileController as LawFirmProfileController;
+use App\Http\Controllers\SensitiveDocumentController;
 
 // PayMongo webhook – public, no auth (signature is verified inside the controller)
 Route::post('/webhooks/paymongo', [\App\Http\Controllers\PaymentWebhookController::class, 'handle']);
@@ -40,6 +41,9 @@ Route::prefix('auth')->group(function () {
 
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/documents/consultations/{consultation}/case-document', [SensitiveDocumentController::class, 'consultationDocument'])
+        ->name('api.documents.consultations.case');
+
     Route::get('/messages/{message}/attachment', [MessageAttachmentController::class, 'show'])
         ->name('api.messages.attachments.show');
 

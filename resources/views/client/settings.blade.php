@@ -93,7 +93,12 @@
 @php $activeTab = session('tab', 'security'); @endphp
 
 <div class="cs-wrap">
-    <div class="cs-page-title">Settings</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div class="cs-page-title">Settings</div>
+        <a href="{{ route('client.profile') }}" style="display:inline-flex;align-items:center;gap:6px;font-size:.85rem;font-weight:600;color:#6b7280;text-decoration:none;padding:7px 14px;border:1.5px solid #e5e7eb;border-radius:8px;transition:background .15s;">
+            <i class="fas fa-user"></i> My Profile
+        </a>
+    </div>
     <p class="cs-page-sub">Manage your account security and notification preferences</p>
 
     @if(session('success'))
@@ -152,7 +157,12 @@
             <div style="background:#f8faff;border-radius:10px;padding:16px 20px;">
                 <div style="font-size:.88rem;color:#374151;font-weight:600;">Last login</div>
                 <div style="font-size:.82rem;color:#6b7280;margin-top:3px;">
-                    <i class="fas fa-clock"></i> {{ Auth::user()->updated_at->format('M d, Y g:i A') }}
+                    <i class="fas fa-clock"></i>
+                    @if(Auth::user()->last_login_at)
+                        {{ Auth::user()->last_login_at->format('M d, Y g:i A') }}
+                    @else
+                        Not recorded yet
+                    @endif
                 </div>
             </div>
         </div>
@@ -162,33 +172,37 @@
     <div id="cst-notifications" style="{{ $activeTab !== 'notifications' ? 'display:none;' : '' }}">
         <div class="cs-card">
             <div class="cs-section-title"><i class="fas fa-bell"></i> Email Notifications</div>
+            <p style="font-size:.82rem;color:#9ca3af;margin:-10px 0 16px;">These preferences are saved locally in your browser.</p>
             <div class="cs-toggle-row">
                 <div class="cs-toggle-info">
                     <div class="cs-toggle-label">Appointment Reminders</div>
                     <div class="cs-toggle-desc">Get notified 24 hours before a scheduled consultation</div>
                 </div>
-                <label class="cs-switch"><input type="checkbox" checked><span class="cs-slider"></span></label>
+                <label class="cs-switch"><input type="checkbox" id="notif_reminders" checked onchange="saveNotifPrefs()"><span class="cs-slider"></span></label>
             </div>
             <div class="cs-toggle-row">
                 <div class="cs-toggle-info">
                     <div class="cs-toggle-label">New Messages</div>
                     <div class="cs-toggle-desc">Receive an email when a lawyer sends you a message</div>
                 </div>
-                <label class="cs-switch"><input type="checkbox" checked><span class="cs-slider"></span></label>
+                <label class="cs-switch"><input type="checkbox" id="notif_messages" checked onchange="saveNotifPrefs()"><span class="cs-slider"></span></label>
             </div>
             <div class="cs-toggle-row">
                 <div class="cs-toggle-info">
                     <div class="cs-toggle-label">Payment Receipts</div>
                     <div class="cs-toggle-desc">Email confirmation after each payment</div>
                 </div>
-                <label class="cs-switch"><input type="checkbox" checked><span class="cs-slider"></span></label>
+                <label class="cs-switch"><input type="checkbox" id="notif_payments" checked onchange="saveNotifPrefs()"><span class="cs-slider"></span></label>
             </div>
             <div class="cs-toggle-row">
                 <div class="cs-toggle-info">
                     <div class="cs-toggle-label">Promotional Emails</div>
                     <div class="cs-toggle-desc">Tips, lawyer spotlights, and platform news</div>
                 </div>
-                <label class="cs-switch"><input type="checkbox"><span class="cs-slider"></span></label>
+                <label class="cs-switch"><input type="checkbox" id="notif_promo" onchange="saveNotifPrefs()"><span class="cs-slider"></span></label>
+            </div>
+            <div id="notifSavedMsg" style="display:none;margin-top:14px;font-size:.82rem;color:#059669;font-weight:600;">
+                <i class="fas fa-check-circle"></i> Preferences saved.
             </div>
         </div>
     </div>
@@ -220,9 +234,10 @@
         <div class="cs-danger-card">
             <div class="cs-danger-title"><i class="fas fa-exclamation-triangle"></i> Danger Zone</div>
             <div class="cs-danger-desc">Deleting your account is permanent and cannot be undone. All your consultations, messages, and payment history will be lost.</div>
-            <button class="cs-danger-btn" onclick="if(confirm('Are you absolutely sure? This cannot be undone.')) alert('Please contact support to delete your account.')">
-                <i class="fas fa-trash-alt"></i> Delete My Account
-            </button>
+            <a href="mailto:{{ config('mail.from.address') }}?subject=Account Deletion Request&body=Please delete my account. My registered email is: {{ Auth::user()->email }}"
+               class="cs-danger-btn" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
+                <i class="fas fa-trash-alt"></i> Request Account Deletion
+            </a>
         </div>
     </div>
 </div>
@@ -235,6 +250,29 @@ function csTab(name, el) {
     document.querySelectorAll('.cs-tab').forEach(function(b) { b.classList.remove('active'); });
     el.classList.add('active');
 }
+
+// Notification preferences — persisted in localStorage
+var NOTIF_KEY = 'lc_notif_prefs_{{ Auth::id() }}';
+function loadNotifPrefs() {
+    try {
+        var prefs = JSON.parse(localStorage.getItem(NOTIF_KEY) || '{}');
+        ['reminders','messages','payments','promo'].forEach(function(k) {
+            var el = document.getElementById('notif_' + k);
+            if (el && prefs[k] !== undefined) el.checked = prefs[k];
+        });
+    } catch(e) {}
+}
+function saveNotifPrefs() {
+    var prefs = {};
+    ['reminders','messages','payments','promo'].forEach(function(k) {
+        var el = document.getElementById('notif_' + k);
+        if (el) prefs[k] = el.checked;
+    });
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(prefs));
+    var msg = document.getElementById('notifSavedMsg');
+    if (msg) { msg.style.display = 'block'; setTimeout(function(){ msg.style.display = 'none'; }, 2000); }
+}
+document.addEventListener('DOMContentLoaded', loadNotifPrefs);
 </script>
 
 @endsection

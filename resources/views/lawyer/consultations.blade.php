@@ -101,7 +101,7 @@
                 <div class="cons-notes"><i class="fas fa-comment-alt"></i> {{ $c->notes }}</div>
                 @endif
                 @if($c->case_document)
-                <div style="display:flex;gap:6px;flex-wrap:wrap;"><a href="{{ asset('storage/' . $c->case_document) }}" target="_blank" rel="noopener" class="cons-doc-link"><i class="fas fa-paperclip"></i> View</a><a href="{{ asset('storage/' . $c->case_document) }}" download class="cons-doc-link" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;"><i class="fas fa-download"></i> Download</a></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;"><a href="{{ route('documents.consultations.case', $c) }}" target="_blank" rel="noopener" class="cons-doc-link"><i class="fas fa-paperclip"></i> View</a><a href="{{ route('documents.consultations.case', ['consultation' => $c, 'download' => 1]) }}" class="cons-doc-link" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;"><i class="fas fa-download"></i> Download</a></div>
                 @endif
             </div>
             <div class="cons-actions">
@@ -187,7 +187,7 @@
                 <div class="cons-notes"><i class="fas fa-comment-alt"></i> {{ $c->notes }}</div>
                 @endif
                 @if($c->case_document)
-                <div style="display:flex;gap:6px;flex-wrap:wrap;"><a href="{{ asset('storage/' . $c->case_document) }}" target="_blank" rel="noopener" class="cons-doc-link"><i class="fas fa-paperclip"></i> View</a><a href="{{ asset('storage/' . $c->case_document) }}" download class="cons-doc-link" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;"><i class="fas fa-download"></i> Download</a></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;"><a href="{{ route('documents.consultations.case', $c) }}" target="_blank" rel="noopener" class="cons-doc-link"><i class="fas fa-paperclip"></i> View</a><a href="{{ route('documents.consultations.case', ['consultation' => $c, 'download' => 1]) }}" class="cons-doc-link" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;"><i class="fas fa-download"></i> Download</a></div>
                 @endif
             </div>
             <div class="cons-actions">
@@ -266,7 +266,7 @@
                 <div class="cons-notes"><i class="fas fa-comment-alt"></i> {{ $c->notes }}</div>
                 @endif
                 @if($c->case_document)
-                <div style="display:flex;gap:6px;flex-wrap:wrap;"><a href="{{ asset('storage/' . $c->case_document) }}" target="_blank" rel="noopener" class="cons-doc-link"><i class="fas fa-paperclip"></i> View</a><a href="{{ asset('storage/' . $c->case_document) }}" download class="cons-doc-link" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;"><i class="fas fa-download"></i> Download</a></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;"><a href="{{ route('documents.consultations.case', $c) }}" target="_blank" rel="noopener" class="cons-doc-link"><i class="fas fa-paperclip"></i> View</a><a href="{{ route('documents.consultations.case', ['consultation' => $c, 'download' => 1]) }}" class="cons-doc-link" style="background:#f0fdf4;color:#16a34a;border-color:#bbf7d0;"><i class="fas fa-download"></i> Download</a></div>
                 @endif
             </div>
         </div>

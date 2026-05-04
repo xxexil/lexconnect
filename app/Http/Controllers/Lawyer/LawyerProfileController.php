@@ -57,10 +57,11 @@ class LawyerProfileController extends Controller
         ] as $input => $column) {
             if ($request->hasFile($input)) {
                 if ($profile->{$column}) {
+                    Storage::disk('local')->delete($profile->{$column});
                     Storage::disk('public')->delete($profile->{$column});
                 }
 
-                $data[$column] = $request->file($input)->store('lawyer-docs', 'public');
+                $data[$column] = $request->file($input)->store('lawyer-docs', 'local');
             }
         }
 

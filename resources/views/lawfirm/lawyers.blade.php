@@ -271,13 +271,14 @@
                         @if($lp->government_id_doc)
                             @php
                                 $govExt = strtolower(pathinfo($lp->government_id_doc, PATHINFO_EXTENSION));
+                                $govUrl = $lp->documentUrl('government_id');
                             @endphp
                             @if(in_array($govExt, ['jpg','jpeg','png','gif','webp']))
-                                <a href="{{ asset('storage/' . $lp->government_id_doc) }}" target="_blank" rel="noopener">
-                                    <img src="{{ asset('storage/' . $lp->government_id_doc) }}" class="lf-rm-doc-img" alt="Government ID">
+                                <a href="{{ $govUrl }}" target="_blank" rel="noopener">
+                                    <img src="{{ $govUrl }}" class="lf-rm-doc-img" alt="Government ID">
                                 </a>
                             @else
-                                <a href="{{ asset('storage/' . $lp->government_id_doc) }}" target="_blank" rel="noopener" class="lf-rm-doc-file">
+                                <a href="{{ $govUrl }}" target="_blank" rel="noopener" class="lf-rm-doc-file">
                                     <i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i>
                                     <span>View PDF</span>
                                 </a>
@@ -293,13 +294,14 @@
                         @if($lp->ibp_id_doc)
                             @php
                                 $ibpExt = strtolower(pathinfo($lp->ibp_id_doc, PATHINFO_EXTENSION));
+                                $ibpUrl = $lp->documentUrl('ibp_id');
                             @endphp
                             @if(in_array($ibpExt, ['jpg','jpeg','png','gif','webp']))
-                                <a href="{{ asset('storage/' . $lp->ibp_id_doc) }}" target="_blank" rel="noopener">
-                                    <img src="{{ asset('storage/' . $lp->ibp_id_doc) }}" class="lf-rm-doc-img" alt="IBP ID">
+                                <a href="{{ $ibpUrl }}" target="_blank" rel="noopener">
+                                    <img src="{{ $ibpUrl }}" class="lf-rm-doc-img" alt="IBP ID">
                                 </a>
                             @else
-                                <a href="{{ asset('storage/' . $lp->ibp_id_doc) }}" target="_blank" rel="noopener" class="lf-rm-doc-file">
+                                <a href="{{ $ibpUrl }}" target="_blank" rel="noopener" class="lf-rm-doc-file">
                                     <i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i>
                                     <span>View PDF</span>
                                 </a>

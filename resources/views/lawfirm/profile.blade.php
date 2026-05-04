@@ -299,7 +299,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                 <div class="fp-info-row">
                     <i class="fas fa-building-shield fp-info-icon"></i>
                     @if($firm->dti_sec_registration_doc)
-                        <a href="{{ asset('storage/' . $firm->dti_sec_registration_doc) }}" target="_blank">View DTI/SEC Registration</a>
+                        <a href="{{ $firm->documentUrl('dti_sec_registration') }}" target="_blank">View DTI/SEC Registration</a>
                     @else
                         <span style="color:#9ca3af;">No DTI/SEC registration uploaded yet.</span>
                     @endif
@@ -307,7 +307,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                 <div class="fp-info-row">
                     <i class="fas fa-file-signature fp-info-icon"></i>
                     @if($firm->business_permit_doc)
-                        <a href="{{ asset('storage/' . $firm->business_permit_doc) }}" target="_blank">View Business Permit</a>
+                        <a href="{{ $firm->documentUrl('business_permit') }}" target="_blank">View Business Permit</a>
                     @else
                         <span style="color:#9ca3af;">No business permit uploaded yet.</span>
                     @endif
@@ -315,7 +315,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                 <div class="fp-info-row">
                     <i class="fas fa-id-card fp-info-icon"></i>
                     @if($firm->valid_id_doc)
-                        <a href="{{ asset('storage/' . $firm->valid_id_doc) }}" target="_blank">View Valid ID</a>
+                        <a href="{{ $firm->documentUrl('valid_id') }}" target="_blank">View Valid ID</a>
                     @else
                         <span style="color:#9ca3af;">No valid ID uploaded yet.</span>
                     @endif
@@ -323,7 +323,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                 <div class="fp-info-row">
                     <i class="fas fa-file-certificate fp-info-icon"></i>
                     @if($firm->ibp_id_doc)
-                        <a href="{{ asset('storage/' . $firm->ibp_id_doc) }}" target="_blank">View IBP ID</a>
+                        <a href="{{ $firm->documentUrl('ibp_id') }}" target="_blank">View IBP ID</a>
                     @else
                         <span style="color:#9ca3af;">No IBP ID uploaded yet.</span>
                     @endif
@@ -492,7 +492,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                         </label>
                         <div class="fp-upload-name">
                             @if($firm->dti_sec_registration_doc)
-                                Current file: <a href="{{ asset('storage/' . $firm->dti_sec_registration_doc) }}" target="_blank">View uploaded document</a>
+                                Current file: <a href="{{ $firm->documentUrl('dti_sec_registration') }}" target="_blank">View uploaded document</a>
                             @else
                                 No file uploaded yet.
                             @endif
@@ -507,7 +507,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                         </label>
                         <div class="fp-upload-name">
                             @if($firm->business_permit_doc)
-                                Current file: <a href="{{ asset('storage/' . $firm->business_permit_doc) }}" target="_blank">View uploaded document</a>
+                                Current file: <a href="{{ $firm->documentUrl('business_permit') }}" target="_blank">View uploaded document</a>
                             @else
                                 No file uploaded yet.
                             @endif
@@ -524,7 +524,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                         </label>
                         <div class="fp-upload-name">
                             @if($firm->valid_id_doc)
-                                Current file: <a href="{{ asset('storage/' . $firm->valid_id_doc) }}" target="_blank">View uploaded document</a>
+                                Current file: <a href="{{ $firm->documentUrl('valid_id') }}" target="_blank">View uploaded document</a>
                             @else
                                 No file uploaded yet.
                             @endif
@@ -539,7 +539,7 @@ $teamCount = \App\Models\LawyerProfile::where('law_firm_id', $firm->id)->count()
                         </label>
                         <div class="fp-upload-name">
                             @if($firm->ibp_id_doc)
-                                Current file: <a href="{{ asset('storage/' . $firm->ibp_id_doc) }}" target="_blank">View uploaded document</a>
+                                Current file: <a href="{{ $firm->documentUrl('ibp_id') }}" target="_blank">View uploaded document</a>
                             @else
                                 No file uploaded yet.
                             @endif

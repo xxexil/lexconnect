@@ -25,6 +25,9 @@ class AuthController extends Controller
             $request->session()->regenerate();
             $user = Auth::user();
 
+            // Record last login time
+            $user->update(['last_login_at' => now()]);
+
             // Block unverified users
             if (!$user->hasVerifiedEmail()) {
                 Auth::logout();
@@ -104,10 +107,10 @@ class AuthController extends Controller
             $govIdPath = null;
             $ibpIdPath = null;
             if ($request->hasFile('government_id')) {
-                $govIdPath = $request->file('government_id')->store('lawyer-docs', 'public');
+                $govIdPath = $request->file('government_id')->store('lawyer-docs', 'local');
             }
             if ($request->hasFile('ibp_id')) {
-                $ibpIdPath = $request->file('ibp_id')->store('lawyer-docs', 'public');
+                $ibpIdPath = $request->file('ibp_id')->store('lawyer-docs', 'local');
             }
 
             LawyerProfile::create([
@@ -146,16 +149,16 @@ class AuthController extends Controller
 
         if ($request->role === 'law_firm') {
             $dtiSecPath = $request->hasFile('dti_sec_registration')
-                ? $request->file('dti_sec_registration')->store('law-firm-docs', 'public')
+                ? $request->file('dti_sec_registration')->store('law-firm-docs', 'local')
                 : null;
             $businessPermitPath = $request->hasFile('business_permit')
-                ? $request->file('business_permit')->store('law-firm-docs', 'public')
+                ? $request->file('business_permit')->store('law-firm-docs', 'local')
                 : null;
             $validIdPath = $request->hasFile('valid_id')
-                ? $request->file('valid_id')->store('law-firm-docs', 'public')
+                ? $request->file('valid_id')->store('law-firm-docs', 'local')
                 : null;
             $ibpIdPath = $request->hasFile('firm_ibp_id')
-                ? $request->file('firm_ibp_id')->store('law-firm-docs', 'public')
+                ? $request->file('firm_ibp_id')->store('law-firm-docs', 'local')
                 : null;
 
             LawFirmProfile::create([

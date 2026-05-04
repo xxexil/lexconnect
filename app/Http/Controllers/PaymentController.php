@@ -39,6 +39,14 @@ class PaymentController extends Controller
             $paymentsQuery->where('type', $type);
         }
 
+        if ($dateFrom = $request->input('date_from')) {
+            $paymentsQuery->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo = $request->input('date_to')) {
+            $paymentsQuery->whereDate('created_at', '<=', $dateTo);
+        }
+
         $payments = $paymentsQuery
             ->latest()
             ->paginate(10)
@@ -49,6 +57,12 @@ class PaymentController extends Controller
         $totalRefunded = $allPayments->where('status', 'refunded')->sum('amount');
         $transactionCount = $allPayments->count();
 
-        return view('payments', compact('payments', 'totalSpent', 'totalPending', 'totalRefunded', 'transactionCount'));
+        $thisMonthSpent = Payment::where('client_id', $user->id)
+            ->whereIn('status', ['paid', 'downpayment_paid'])
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('amount');
+
+        return view('payments', compact('payments', 'totalSpent', 'totalPending', 'totalRefunded', 'transactionCount', 'thisMonthSpent'));
     }
 }

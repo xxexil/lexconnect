@@ -129,4 +129,37 @@ class LawyerProfile extends Model {
     {
         return ucfirst($this->currentStatus($at));
     }
+
+    public static function documentColumns(): array
+    {
+        return [
+            'government_id' => 'government_id_doc',
+            'ibp_id' => 'ibp_id_doc',
+        ];
+    }
+
+    public function documentPath(string $document): ?string
+    {
+        $column = static::documentColumns()[$document] ?? null;
+
+        return $column ? $this->{$column} : null;
+    }
+
+    public function documentUrl(string $document): ?string
+    {
+        $path = $this->documentPath($document);
+
+        if (!$path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        return route('documents.lawyers.document', [
+            'lawyerProfile' => $this,
+            'document' => $document,
+        ]);
+    }
 }

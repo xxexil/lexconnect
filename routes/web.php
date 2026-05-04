@@ -14,6 +14,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentGatewayController;
 use App\Http\Controllers\MobilePaymentRedirectController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SensitiveDocumentController;
 use App\Http\Controllers\VideoCallController;
 use App\Http\Controllers\Lawyer\LawyerDashboardController;
 use App\Http\Controllers\Lawyer\LawyerConsultationController;
@@ -214,6 +215,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/lawyers/{id}/profile', [LawyerController::class,     'show'])->name('lawyer.public-profile');
     Route::get('/consultations/book/{lawyer}',           [ConsultationController::class,'create'])->name('consultations.create');
     Route::post('/messages/start',      [MessageController::class,    'startConversation'])->name('messages.start');
+
+    Route::get('/documents/consultations/{consultation}/case-document', [SensitiveDocumentController::class, 'consultationDocument'])
+        ->name('documents.consultations.case');
+    Route::get('/documents/lawyers/{lawyerProfile}/{document}', [SensitiveDocumentController::class, 'lawyerDocument'])
+        ->name('documents.lawyers.document');
+    Route::get('/documents/law-firms/{lawFirmProfile}/{document}', [SensitiveDocumentController::class, 'lawFirmDocument'])
+        ->name('documents.law-firms.document');
 
     Route::get('/consultations',                          [ConsultationController::class,'index'])->name('consultations');
     Route::post('/consultations/book',                    [ConsultationController::class,'book'])->name('consultations.book');

@@ -22,7 +22,7 @@ class DashboardController extends Controller
             ->orderBy('scheduled_at')
             ->get();
 
-        $completedConsultations = Consultation::with(['lawyer','lawyer.lawyerProfile'])
+        $completedConsultations = Consultation::with(['lawyer','lawyer.lawyerProfile','review'])
             ->where('client_id', $user->id)
             ->where('status', 'completed')
             ->latest('scheduled_at')

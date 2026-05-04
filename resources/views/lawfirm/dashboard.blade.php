@@ -279,11 +279,14 @@
                     <div class="lf-rm-doc-card">
                         <div class="lf-rm-doc-label"><i class="fas fa-id-card"></i> Government ID</div>
                         @if($lp->government_id_doc)
-                            @php $ext = strtolower(pathinfo($lp->government_id_doc, PATHINFO_EXTENSION)); @endphp
+                            @php
+                                $ext = strtolower(pathinfo($lp->government_id_doc, PATHINFO_EXTENSION));
+                                $govUrl = $lp->documentUrl('government_id');
+                            @endphp
                             @if(in_array($ext, ['jpg','jpeg','png','gif','webp']))
-                                <a href="{{ asset('storage/'.$lp->government_id_doc) }}" target="_blank"><img src="{{ asset('storage/'.$lp->government_id_doc) }}" class="lf-rm-doc-img" alt="Gov ID"></a>
+                                <a href="{{ $govUrl }}" target="_blank"><img src="{{ $govUrl }}" class="lf-rm-doc-img" alt="Gov ID"></a>
                             @else
-                                <a href="{{ asset('storage/'.$lp->government_id_doc) }}" target="_blank" class="lf-rm-doc-file"><i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i><span>View PDF</span></a>
+                                <a href="{{ $govUrl }}" target="_blank" class="lf-rm-doc-file"><i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i><span>View PDF</span></a>
                             @endif
                         @else
                             <div class="lf-rm-doc-missing"><i class="fas fa-exclamation-triangle"></i> Not submitted</div>
@@ -292,11 +295,14 @@
                     <div class="lf-rm-doc-card">
                         <div class="lf-rm-doc-label"><i class="fas fa-file-certificate"></i> IBP ID</div>
                         @if($lp->ibp_id_doc)
-                            @php $ext = strtolower(pathinfo($lp->ibp_id_doc, PATHINFO_EXTENSION)); @endphp
+                            @php
+                                $ext = strtolower(pathinfo($lp->ibp_id_doc, PATHINFO_EXTENSION));
+                                $ibpUrl = $lp->documentUrl('ibp_id');
+                            @endphp
                             @if(in_array($ext, ['jpg','jpeg','png','gif','webp']))
-                                <a href="{{ asset('storage/'.$lp->ibp_id_doc) }}" target="_blank"><img src="{{ asset('storage/'.$lp->ibp_id_doc) }}" class="lf-rm-doc-img" alt="IBP ID"></a>
+                                <a href="{{ $ibpUrl }}" target="_blank"><img src="{{ $ibpUrl }}" class="lf-rm-doc-img" alt="IBP ID"></a>
                             @else
-                                <a href="{{ asset('storage/'.$lp->ibp_id_doc) }}" target="_blank" class="lf-rm-doc-file"><i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i><span>View PDF</span></a>
+                                <a href="{{ $ibpUrl }}" target="_blank" class="lf-rm-doc-file"><i class="fas fa-file-pdf" style="font-size:2rem;color:#dc3545;"></i><span>View PDF</span></a>
                             @endif
                         @else
                             <div class="lf-rm-doc-missing"><i class="fas fa-exclamation-triangle"></i> Not submitted</div>
