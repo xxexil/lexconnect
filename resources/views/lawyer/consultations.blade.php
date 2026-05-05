@@ -17,7 +17,7 @@
 @endif
 
 {{-- ── SUMMARY BAR ── --}}
-<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+<div id="lawyer-consultation-summary" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
     @php
         $summaryItems = [
             ['label'=>'Pending',   'count'=>$pending->count(),   'color'=>'#f59e0b','icon'=>'fa-hourglass-half'],
@@ -37,18 +37,18 @@
 </div>
 
 {{-- ── TABS ── --}}
-<div class="lp-tabs">
-    <button class="lp-tab active" onclick="showTab('pending',this)">
+<div id="lawyer-consultation-tabs" class="lp-tabs">
+    <button class="lp-tab active" data-tab="pending" onclick="showTab('pending',this)">
         Pending @if($pending->count() > 0)<span class="lp-tab-badge">{{ $pending->count() }}</span>@endif
     </button>
-    <button class="lp-tab" onclick="showTab('upcoming',this)">
+    <button class="lp-tab" data-tab="upcoming" onclick="showTab('upcoming',this)">
         Upcoming @if($upcoming->count() > 0)<span class="lp-tab-badge upcoming">{{ $upcoming->count() }}</span>@endif
     </button>
-    <button class="lp-tab" onclick="showTab('completed',this)">
+    <button class="lp-tab" data-tab="completed" onclick="showTab('completed',this)">
         Completed
     </button>
-    <button class="lp-tab" onclick="showTab('cancelled',this)">Cancelled</button>
-    <button class="lp-tab" onclick="showTab('expired',this)">Expired</button>
+    <button class="lp-tab" data-tab="cancelled" onclick="showTab('cancelled',this)">Cancelled</button>
+    <button class="lp-tab" data-tab="expired" onclick="showTab('expired',this)">Expired</button>
 </div>
 
 {{-- ── PENDING TAB ── --}}
@@ -388,6 +388,8 @@
 
 @push('scripts')
 <script>
+const consultationTabs = ['pending', 'upcoming', 'completed', 'cancelled', 'expired'];
+
 function showTab(name, btn) {
     document.querySelectorAll('.lp-tab-content').forEach(t => t.style.display = 'none');
     document.querySelectorAll('.lp-tab').forEach(t => t.classList.remove('active'));
@@ -398,8 +400,7 @@ function showTab(name, btn) {
 // Auto-open tab from URL hash
 (function() {
     const hash = window.location.hash.replace('#', '');
-    const validTabs = ['pending', 'upcoming', 'completed', 'cancelled', 'expired'];
-    if (validTabs.includes(hash)) {
+    if (consultationTabs.includes(hash)) {
         const btn = document.querySelector('.lp-tab[onclick*="' + hash + '"]');
         if (btn) showTab(hash, btn);
     }
@@ -432,6 +433,11 @@ function paginateTab(tabName) {
 }
 
 function buildPaginationBar(tabName) {
+    const container = document.getElementById('tab-' + tabName);
+    if (!container) return;
+    const existing = container.querySelector('.cons-pagination');
+    if (existing) existing.remove();
+
     const bar = document.createElement('div');
     bar.className = 'cons-pagination';
     bar.innerHTML = `
@@ -439,7 +445,7 @@ function buildPaginationBar(tabName) {
         <span class="pg-info"></span>
         <button class="pg-next" onclick="changePage('${tabName}',1)">Next <i class="fas fa-chevron-right"></i></button>
     `;
-    document.getElementById('tab-' + tabName).appendChild(bar);
+    container.appendChild(bar);
 }
 
 function changePage(tabName, dir) {
@@ -451,9 +457,92 @@ function changePage(tabName, dir) {
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-['pending','upcoming','completed','cancelled','expired'].forEach(tab => {
-    buildPaginationBar(tab);
-    paginateTab(tab);
+function initializeConsultationTabs() {
+    consultationTabs.forEach(tab => {
+        const container = document.getElementById('tab-' + tab);
+        const currentPage = tabPages[tab] || 1;
+        const totalCards = container ? container.querySelectorAll('.cons-card').length : 0;
+        const totalPages = Math.max(1, Math.ceil(totalCards / PAGE_SIZE));
+        tabPages[tab] = Math.min(currentPage, totalPages);
+        buildPaginationBar(tab);
+        paginateTab(tab);
+    });
+    refreshJoinButtons();
+}
+
+initializeConsultationTabs();
+
+function getActiveConsultationTab() {
+    const active = document.querySelector('#lawyer-consultation-tabs .lp-tab.active');
+    return (active && active.dataset.tab) || 'pending';
+}
+
+function getPendingCount(root) {
+    const pendingTab = root.querySelector('#tab-pending');
+    return pendingTab ? pendingTab.querySelectorAll('.cons-card').length : 0;
+}
+
+let lastPendingCount = getPendingCount(document);
+let consultationRefreshInFlight = false;
+
+function refreshLawyerConsultations() {
+    if (consultationRefreshInFlight || document.hidden) return;
+    const activeModal = document.getElementById('consultActionModal');
+    if (activeModal && activeModal.classList.contains('open')) return;
+
+    consultationRefreshInFlight = true;
+    const activeTab = getActiveConsultationTab();
+
+    fetch(window.location.href.split('#')[0], {
+        headers: {
+            'Accept': 'text/html',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'same-origin'
+    })
+        .then(response => response.ok ? response.text() : Promise.reject(response))
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const previousPendingCount = lastPendingCount;
+
+            ['#lawyer-consultation-summary', '#lawyer-consultation-tabs'].forEach(selector => {
+                const current = document.querySelector(selector);
+                const fresh = doc.querySelector(selector);
+                if (current && fresh) current.replaceWith(fresh);
+            });
+
+            consultationTabs.forEach(tab => {
+                const current = document.getElementById('tab-' + tab);
+                const fresh = doc.getElementById('tab-' + tab);
+                if (current && fresh) current.replaceWith(fresh);
+            });
+
+            initializeConsultationTabs();
+
+            const activeButton = document.querySelector(`#lawyer-consultation-tabs .lp-tab[data-tab="${activeTab}"]`)
+                || document.querySelector('#lawyer-consultation-tabs .lp-tab[data-tab="pending"]');
+            if (activeButton) {
+                showTab(activeButton.dataset.tab || 'pending', activeButton);
+            }
+
+            lastPendingCount = getPendingCount(document);
+            if (lastPendingCount > previousPendingCount) {
+                const pendingButton = document.querySelector('#lawyer-consultation-tabs .lp-tab[data-tab="pending"]');
+                if (pendingButton) {
+                    pendingButton.classList.add('lp-tab-pulse');
+                    setTimeout(() => pendingButton.classList.remove('lp-tab-pulse'), 1600);
+                }
+            }
+        })
+        .catch(() => {})
+        .finally(() => {
+            consultationRefreshInFlight = false;
+        });
+}
+
+setInterval(refreshLawyerConsultations, 5000);
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) refreshLawyerConsultations();
 });
 
 function refreshJoinButtons() {
@@ -505,14 +594,17 @@ function closeConsultationModal() {
     pendingConsultationForm = null;
 }
 
-document.querySelectorAll('.js-consultation-confirm').forEach(function(button) {
-    button.addEventListener('click', function() {
+document.addEventListener('click', function(event) {
+    const button = event.target.closest('.js-consultation-confirm');
+    if (button) {
         openConsultationModal(button);
-    });
+    }
 });
 
-document.querySelectorAll('[data-modal-close]').forEach(function(button) {
-    button.addEventListener('click', closeConsultationModal);
+document.addEventListener('click', function(event) {
+    if (event.target.closest('[data-modal-close]')) {
+        closeConsultationModal();
+    }
 });
 
 consultModalConfirm.addEventListener('click', function() {
@@ -580,6 +672,14 @@ document.addEventListener('keydown', function(event) {
 }
 .cons-pagination .pg-prev:disabled, .cons-pagination .pg-next:disabled { opacity: .35; cursor: not-allowed; }
 .cons-pagination .pg-info { font-size: .85rem; color: #6c757d; min-width: 110px; text-align: center; }
+.lp-tab-pulse {
+    animation: lawyerPendingPulse 1.6s ease;
+}
+@keyframes lawyerPendingPulse {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, .45); }
+    70% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
 </style>
 @endpush
 

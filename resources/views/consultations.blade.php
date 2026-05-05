@@ -94,6 +94,13 @@
     color:#fff;
     box-shadow:0 6px 18px rgba(30,45,77,.12);
 }
+.mc-status-tab.has-live-update {
+    animation: mc-tab-pulse 1.2s ease-in-out 3;
+}
+@keyframes mc-tab-pulse {
+    0%, 100% { box-shadow:0 0 0 rgba(37,99,235,0); }
+    45% { box-shadow:0 0 0 6px rgba(37,99,235,.16); }
+}
 .mc-status-tab-badge {
     display:inline-flex;
     align-items:center;
@@ -851,8 +858,15 @@ function setRating(val) {
 document.addEventListener('DOMContentLoaded', function () {
     var tabButtons = document.querySelectorAll('[data-panel-target]');
     var panels = document.querySelectorAll('[data-panel]');
+    var currentUserId = @json(Auth::id());
+    var refreshInFlight = false;
+    var refreshQueued = false;
+    var lastUpcomingCount = readTabCount('upcoming');
 
     function setActivePanel(panelName) {
+        tabButtons = document.querySelectorAll('[data-panel-target]');
+        panels = document.querySelectorAll('[data-panel]');
+
         tabButtons.forEach(function (button) {
             button.classList.toggle('is-active', button.dataset.panelTarget === panelName);
         });
@@ -862,11 +876,129 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    tabButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-            setActivePanel(button.dataset.panelTarget);
+    function bindTabs() {
+        tabButtons = document.querySelectorAll('[data-panel-target]');
+        tabButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                setActivePanel(button.dataset.panelTarget);
+            });
         });
-    });
+    }
+
+    function activePanelName() {
+        var active = document.querySelector('[data-panel].is-active');
+        return active ? active.dataset.panel : 'pending';
+    }
+
+    function readTabCount(panelName, root) {
+        root = root || document;
+        var tab = root.querySelector('[data-panel-target="' + panelName + '"]');
+        if (!tab) return 0;
+
+        var badge = tab.querySelector('.mc-status-tab-badge');
+        return badge ? (parseInt(badge.textContent, 10) || 0) : 0;
+    }
+
+    function replaceContentFrom(html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var selectors = ['.mc-summary', '.mc-status-tabs', '[data-panel="pending"]', '[data-panel="upcoming"]', '[data-panel="completed"]', '[data-panel="cancelled"]', '[data-panel="expired"]', '.mc-empty'];
+        var nextUpcomingCount = readTabCount('upcoming', doc);
+        var shouldHighlightUpcoming = nextUpcomingCount > lastUpcomingCount;
+
+        selectors.forEach(function(selector) {
+            var current = document.querySelector(selector);
+            var fresh = doc.querySelector(selector);
+
+            if (current && fresh) {
+                current.replaceWith(fresh);
+            } else if (current && !fresh && selector === '.mc-empty') {
+                current.remove();
+            }
+        });
+
+        bindTabs();
+        lastUpcomingCount = nextUpcomingCount;
+        return shouldHighlightUpcoming;
+    }
+
+    function highlightUpcomingTab() {
+        var upcomingTab = document.querySelector('[data-panel-target="upcoming"]');
+        if (!upcomingTab) return;
+
+        upcomingTab.classList.remove('has-live-update');
+        void upcomingTab.offsetWidth;
+        upcomingTab.classList.add('has-live-update');
+    }
+
+    function refreshConsultations() {
+        if (refreshInFlight) {
+            refreshQueued = true;
+            return;
+        }
+
+        refreshInFlight = true;
+        refreshQueued = false;
+
+        var panelBeforeRefresh = activePanelName();
+        var url = new URL(window.location.href);
+        url.searchParams.set('section', panelBeforeRefresh);
+
+        fetch(url.toString(), {
+            headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Could not refresh consultations.');
+                return response.text();
+            })
+            .then(function(html) {
+                var shouldHighlightUpcoming = replaceContentFrom(html);
+                setActivePanel(panelBeforeRefresh);
+                if (shouldHighlightUpcoming) {
+                    highlightUpcomingTab();
+                }
+            })
+            .catch(function(error) {
+                console.error('Consultation refresh failed:', error);
+            })
+            .finally(function() {
+                refreshInFlight = false;
+                if (refreshQueued) {
+                    refreshConsultations();
+                }
+            });
+    }
+
+    function listenForConsultationUpdates(attempt) {
+        attempt = attempt || 1;
+
+        if (!currentUserId) return;
+
+        if (!window.Echo) {
+            if (attempt < 8) {
+                setTimeout(function() {
+                    listenForConsultationUpdates(attempt + 1);
+                }, 500);
+            }
+            return;
+        }
+
+        window.Echo.private('App.Models.User.' + currentUserId)
+            .listen('.ConsultationStatusChanged', function(event) {
+                if (event.status === 'upcoming') {
+                    refreshConsultations();
+                }
+            });
+    }
+
+    bindTabs();
+    setTimeout(function() {
+        listenForConsultationUpdates(1);
+    }, 500);
+    setInterval(refreshConsultations, 5000);
 });
 </script>
 @endpush

@@ -316,6 +316,7 @@
                             ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
     var updateMessageUrlTemplate = @json(route('lawfirm.messages.update', ['message' => '__MESSAGE__']));
     var deleteMessageUrlTemplate = @json(route('lawfirm.messages.destroy', ['message' => '__MESSAGE__']));
+    var latestMessagesUrlTemplate = @json(route('messages.latest', ['conversation' => '__CONVERSATION__']));
     var activeEditMessageId = null;
     var pendingDeleteMessageId = null;
     var pendingDeleteSnapshot = null;
@@ -326,6 +327,16 @@
     var selectedFiles = [];
     var isSending = false;
     var defaultSendButtonHtml = sendBtn ? sendBtn.innerHTML : '';
+    var lastSeenMessageId = 0;
+
+    if (bubbles) {
+        bubbles.querySelectorAll('.msg-bubble-wrap[data-message-id]').forEach(function(wrap) {
+            var id = parseInt(wrap.getAttribute('data-message-id'), 10);
+            if (!Number.isNaN(id)) {
+                lastSeenMessageId = Math.max(lastSeenMessageId, id);
+            }
+        });
+    }
 
     var lightboxImages = [];
     var lightboxIndex = 0;
@@ -443,6 +454,10 @@
             console.error('❌ bubbles element not found!');
             return;
         }
+        if (message.id && bubbles.querySelector('.msg-bubble-wrap[data-message-id="' + message.id + '"]')) {
+            return;
+        }
+
         var wrap = null;
         if (message.batch_uuid) {
             wrap = bubbles.querySelector('.msg-bubble-wrap[data-batch-id="' + message.batch_uuid + '"][data-mine="' + (mine ? 1 : 0) + '"]');
@@ -543,8 +558,41 @@
             bubble.appendChild(timeNode);
         }
         timeNode.textContent = message.time;
+        var numericMessageId = parseInt(message.id, 10);
+        if (!Number.isNaN(numericMessageId)) {
+            lastSeenMessageId = Math.max(lastSeenMessageId, numericMessageId);
+        }
         bubbles.scrollTop = bubbles.scrollHeight;
         console.log('✅ Message bubble added to DOM');
+    }
+
+    function getLatestMessagesUrl() {
+        return latestMessagesUrlTemplate.replace('__CONVERSATION__', convId);
+    }
+
+    function pollLatestMessages() {
+        if (!convId || !bubbles) return;
+
+        fetch(getLatestMessagesUrl() + '?after_id=' + encodeURIComponent(lastSeenMessageId), {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Could not fetch latest messages.');
+                return response.json();
+            })
+            .then(function(data) {
+                var messages = Array.isArray(data.messages) ? data.messages : [];
+                messages.forEach(function(message) {
+                    appendBubbleMessage(message, message.sender_id === currentUserId);
+                });
+            })
+            .catch(function(error) {
+                console.warn('Latest message polling failed:', error);
+            });
     }
 
     function escHtml(text) {
@@ -1259,6 +1307,8 @@
                 console.error('Echo not available - WebSocket not initialized');
             }
         }, 1000); // 1 second delay
+
+        setInterval(pollLatestMessages, 3000);
     }
 
     // Global real-time message notifications for all law firm conversations

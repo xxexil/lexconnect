@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     public function showLogin() {
+        if (Auth::check()) {
+            return $this->redirectAuthenticatedUser();
+        }
+
         return view('auth.login');
     }
 
@@ -52,6 +56,10 @@ class AuthController extends Controller
     }
 
     public function showRegister() {
+        if (Auth::check()) {
+            return $this->redirectAuthenticatedUser();
+        }
+
         $lawFirms = LawFirmProfile::select(
             'id','firm_name','tagline','description','address','city',
             'website','phone','founded_year','firm_size','cut_percentage','specialties',
@@ -202,5 +210,17 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('login');
+    }
+
+    private function redirectAuthenticatedUser()
+    {
+        $user = Auth::user();
+
+        return match ($user->role) {
+            'lawyer' => redirect()->route('lawyer.dashboard'),
+            'law_firm' => redirect()->route('lawfirm.dashboard'),
+            'admin' => redirect()->route('admin.dashboard'),
+            default => redirect()->route('dashboard'),
+        };
     }
 }

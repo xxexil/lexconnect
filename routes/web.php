@@ -46,7 +46,18 @@ Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.
 Route::post('/admin/logout',[AdminAuthController::class, 'logout'])->name('admin.logout');
 
 // Guest routes
-Route::get('/', fn() => view('landing'))->name('home');
+Route::get('/', function () {
+    if (Auth::check()) {
+        return match (Auth::user()->role) {
+            'lawyer' => redirect()->route('lawyer.dashboard'),
+            'law_firm' => redirect()->route('lawfirm.dashboard'),
+            'admin' => redirect()->route('admin.dashboard'),
+            default => redirect()->route('dashboard'),
+        };
+    }
+
+    return view('landing');
+})->name('home');
 Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login',   [AuthController::class, 'login']);
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
@@ -235,6 +246,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/consultations/{consultation}/video/end',[VideoCallController::class,   'end'])->name('consultations.video.end');
 
     Route::get('/messages',      [MessageController::class,'index'])->name('messages');
+    Route::get('/messages/{conversation}/latest', [MessageController::class, 'latest'])->name('messages.latest');
     Route::post('/messages/send',[MessageController::class,'send'])->name('messages.send');
     Route::put('/messages/{message}', [MessageController::class, 'update'])->name('messages.update');
     Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');

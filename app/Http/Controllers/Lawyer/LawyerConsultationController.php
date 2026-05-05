@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Lawyer;
 
 use App\Http\Controllers\Controller;
+use App\Events\ConsultationStatusChanged;
 use App\Models\Consultation;
 use App\Models\Payment;
 use App\Services\ConsultationPaymentService;
@@ -53,6 +54,7 @@ class LawyerConsultationController extends Controller
     {
         $c = Consultation::where('lawyer_id', Auth::id())->where('status', 'pending')->findOrFail($id);
         $c->update(['status' => 'upcoming']);
+        broadcast(new ConsultationStatusChanged($c->fresh()));
         return back()->with('success', 'Consultation accepted. The client will be notified.');
     }
 

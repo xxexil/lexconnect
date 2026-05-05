@@ -3434,6 +3434,12 @@ a.btn-primary { text-decoration: none; display: inline-flex; align-items: center
     width: auto !important;
     max-width: min(65%, 720px) !important;
     min-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: inherit !important;
 }
 .msg-bubbles .msg-bubble-text {
     display: inline-block !important;

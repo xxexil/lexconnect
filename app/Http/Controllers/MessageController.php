@@ -133,6 +133,35 @@ class MessageController extends Controller
         return redirect()->route('messages', ['conversation' => $conv->id]);
     }
 
+    public function latest(Request $request, Conversation $conversation)
+    {
+        $user = Auth::user();
+
+        if ($conversation->client_id !== $user->id && $conversation->lawyer_id !== $user->id) {
+            abort(403);
+        }
+
+        $afterId = max(0, (int) $request->query('after_id', 0));
+
+        $messages = Message::where('conversation_id', $conversation->id)
+            ->where('id', '>', $afterId)
+            ->with('sender')
+            ->orderBy('id')
+            ->get();
+
+        if ($messages->isNotEmpty()) {
+            Message::where('conversation_id', $conversation->id)
+                ->whereIn('id', $messages->pluck('id'))
+                ->where('sender_id', '!=', $user->id)
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
+        }
+
+        return response()->json([
+            'messages' => $messages->map(fn (Message $message) => $message->toApiArray($user->id))->values(),
+        ]);
+    }
+
     public function destroy(Request $request, Message $message, MessageDeletionService $messageDeletionService)
     {
         $user = Auth::user();

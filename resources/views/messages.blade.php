@@ -439,6 +439,7 @@
     var csrfToken= (document.querySelector('meta[name="csrf-token"]')||{getAttribute:function(){return '';}}).getAttribute('content');
     var updateMessageUrlTemplate = @json(route('messages.update', ['message' => '__MESSAGE__']));
     var deleteMessageUrlTemplate = @json(route('messages.destroy', ['message' => '__MESSAGE__']));
+    var latestMessagesUrlTemplate = @json(route('messages.latest', ['conversation' => '__CONVERSATION__']));
     var activeEditMessageId = null;
     var pendingDeleteMessageId = null;
     var pendingDeleteSnapshot = null;
@@ -451,6 +452,18 @@
     var uploadPreview= document.getElementById('uploadPreview');
     var isSending    = false;
     var defaultSendButtonHtml = sendBtn ? sendBtn.innerHTML : '';
+    var activeConversationSubscribed = false;
+    var globalConversationsSubscribed = false;
+    var lastSeenMessageId = 0;
+
+    if (bubbles) {
+        bubbles.querySelectorAll('.msg-bubble-wrap[data-message-id]').forEach(function(wrap) {
+            var id = parseInt(wrap.getAttribute('data-message-id'), 10);
+            if (!Number.isNaN(id)) {
+                lastSeenMessageId = Math.max(lastSeenMessageId, id);
+            }
+        });
+    }
 
     if (fileInput) {
         fileInput.addEventListener('change', function(){ selectedFiles = Array.from(this.files || []); renderPreview(); });
@@ -984,6 +997,10 @@
 
     function appendBubbleMessage(message, mine) {
         if (!bubbles) return;
+        if (message.id && bubbles.querySelector('.msg-bubble-wrap[data-message-id="' + message.id + '"]')) {
+            return;
+        }
+
         var empty = bubbles.querySelector('.msg-chat-empty');
         if (empty) empty.remove();
 
@@ -1089,7 +1106,63 @@
             inner.appendChild(t);
         }
         t.textContent = message.time;
+        var numericMessageId = parseInt(message.id, 10);
+        if (!Number.isNaN(numericMessageId)) {
+            lastSeenMessageId = Math.max(lastSeenMessageId, numericMessageId);
+        }
         bubbles.scrollTop = bubbles.scrollHeight;
+    }
+
+    function getLatestMessagesUrl() {
+        return latestMessagesUrlTemplate.replace('__CONVERSATION__', convId);
+    }
+
+    function pollLatestMessages() {
+        if (!convId || !bubbles) return;
+
+        fetch(getLatestMessagesUrl() + '?after_id=' + encodeURIComponent(lastSeenMessageId), {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Could not fetch latest messages.');
+                return response.json();
+            })
+            .then(function(data) {
+                var messages = Array.isArray(data.messages) ? data.messages : [];
+                messages.forEach(function(message) {
+                    appendBubbleMessage(message, message.sender_id === currentUserId);
+                });
+            })
+            .catch(function(error) {
+                console.warn('Latest message polling failed:', error);
+            });
+    }
+
+    function removeBubbleMessage(messageId) {
+        if (!bubbles || !messageId) return;
+        var wrap = bubbles.querySelector('.msg-bubble-wrap[data-message-id="' + messageId + '"]');
+        if (wrap) {
+            wrap.remove();
+            ensureConversationEmptyState();
+        }
+    }
+
+    function optimisticTextMessage(body) {
+        return {
+            id: 'pending-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+            conversation_id: convId,
+            sender_id: currentUserId,
+            body: body,
+            time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+            batch_uuid: '',
+            attachment_path: null,
+            attachment_type: null,
+            attachment_name: null,
+        };
     }
 
     function doSend() {
@@ -1102,6 +1175,15 @@
         if (!body && !selectedFiles.length) return;
         isSending = true;
         if (sendBtn) sendBtn.disabled = true;
+
+        var pendingMessage = null;
+        var originalBody = body;
+        if (body && !selectedFiles.length) {
+            pendingMessage = optimisticTextMessage(body);
+            appendBubbleMessage(pendingMessage, true);
+            if (msgInput) msgInput.value = '';
+        }
+
         var fd = new FormData();
         fd.append('conversation_id', convId);
         fd.append('body', body);
@@ -1118,6 +1200,9 @@
         })
         .then(function(data){
             var messages = Array.isArray(data.messages) ? data.messages : [];
+            if (pendingMessage) {
+                removeBubbleMessage(pendingMessage.id);
+            }
             messages.forEach(function(message){
                 appendBubbleMessage(message, true);
             });
@@ -1125,6 +1210,10 @@
             clearFile();
         })
         .catch(function(){
+            if (pendingMessage) {
+                removeBubbleMessage(pendingMessage.id);
+                if (msgInput && !msgInput.value) msgInput.value = originalBody;
+            }
             window.alert('Message failed to send. Please try again.');
         })
         .finally(function(){
@@ -1138,8 +1227,16 @@
 
     // WebSocket
     if (convId) {
-        setTimeout(function(){
-            if (!window.Echo) return;
+        function setupActiveConversationSocket(attempt) {
+            attempt = attempt || 1;
+            if (activeConversationSubscribed) return;
+            if (!window.Echo) {
+                if (attempt < 10) {
+                    setTimeout(function(){ setupActiveConversationSocket(attempt + 1); }, 500);
+                }
+                return;
+            }
+            activeConversationSubscribed = true;
             var dot  = document.getElementById('presenceDot');
             var text = document.getElementById('presenceText');
             var initialPresenceStatus = @json($status ?? 'offline');
@@ -1171,11 +1268,19 @@
                         if (user.id !== currentUserId && initialPresenceStatus === 'offline') setOnline(false);
                     });
             }
-        }, 1000);
+        }
 
         // Global listeners
-        setTimeout(function(){
-            if (!window.Echo) return;
+        function setupGlobalConversationSockets(attempt) {
+            attempt = attempt || 1;
+            if (globalConversationsSubscribed) return;
+            if (!window.Echo) {
+                if (attempt < 10) {
+                    setTimeout(function(){ setupGlobalConversationSockets(attempt + 1); }, 500);
+                }
+                return;
+            }
+            globalConversationsSubscribed = true;
             @php $cids = Auth::check() ? \App\Models\Conversation::where('client_id',Auth::id())->pluck('id')->toArray() : []; @endphp
             var cids = @json($cids);
             cids.forEach(function(cid){
@@ -1202,7 +1307,11 @@
                     adjustConversationUnreadBadge(e.conversation_id, -1 * (parseInt(e.deleted_unread_count || 0, 10) || 0));
                 });
             });
-        }, 1500);
+        }
+
+        setTimeout(function(){ setupActiveConversationSocket(1); }, 300);
+        setTimeout(function(){ setupGlobalConversationSockets(1); }, 500);
+        setInterval(pollLatestMessages, 3000);
     }
 })();
 </script>

@@ -337,36 +337,38 @@
         }
         .controls {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
             justify-content: flex-end;
+            align-items: center;
         }
         .ctrl-btn,
         .leave-link,
         .end-btn {
-            border: none;
+            min-height: 52px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
             border-radius: 14px;
             font-family: inherit;
             font-size: 0.88rem;
             font-weight: 700;
             cursor: pointer;
-            padding: 12px 16px;
+            padding: 0 16px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             text-decoration: none;
-            transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
-        }
-        .ctrl-btn {
-            background: rgba(15, 23, 42, 0.92);
+            background: rgba(15, 23, 42, 0.88);
             color: #e2e8f0;
-            border: 1px solid rgba(148, 163, 184, 0.18);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
         }
         .ctrl-btn:hover,
         .leave-link:hover,
         .end-btn:hover {
             transform: translateY(-1px);
+            background: rgba(30, 41, 59, 0.94);
+            border-color: rgba(148, 163, 184, 0.34);
         }
         .ctrl-btn.off {
             background: rgba(127, 29, 29, 0.8);
@@ -379,18 +381,30 @@
             display: inline-flex;
             align-items: center;
             height: 52px;
-            border-radius: 999px;
-            background: rgba(31, 41, 55, 0.92);
-            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.88);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
             overflow: visible;
+        }
+        .mic-control:hover,
+        .camera-control:hover {
+            background: rgba(30, 41, 59, 0.94);
+            border-color: rgba(148, 163, 184, 0.34);
         }
         .device-select-wrap {
             position: relative;
-            width: 44px;
+            width: 42px;
             height: 100%;
-            flex: 0 0 44px;
-            border-radius: 999px 0 0 999px;
+            flex: 0 0 42px;
+            border-radius: 14px 0 0 14px;
             cursor: pointer;
+            border-right: 1px solid rgba(148, 163, 184, 0.16);
+            transition: background 0.16s ease;
+        }
+        .device-select-wrap:hover,
+        .device-select-wrap.open {
+            background: rgba(51, 65, 85, 0.72);
         }
         .device-select-wrap .device-select-arrow {
             position: absolute;
@@ -398,7 +412,7 @@
             transform: translateY(-50%);
             pointer-events: none;
             z-index: 1;
-            left: 17px;
+            left: 16px;
             font-size: 0.76rem;
             color: #a7b0bf;
         }
@@ -490,19 +504,24 @@
             width: 52px;
             height: 52px;
             border: none;
-            border-radius: 999px;
-            background: rgba(55, 65, 81, 0.94);
+            border-radius: 0 14px 14px 0;
+            background: transparent;
             color: #e5e7eb;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-size: 1.05rem;
             cursor: pointer;
+            transition: background 0.16s ease, color 0.16s ease;
+        }
+        .mic-toggle-btn:hover,
+        .camera-toggle-btn:hover {
+            background: rgba(51, 65, 85, 0.72);
         }
         .mic-toggle-btn.off,
         .camera-toggle-btn.off {
             color: #fecaca;
-            background: rgba(127, 29, 29, 0.88);
+            background: rgba(127, 29, 29, 0.72);
         }
         .mic-permission-badge,
         .camera-permission-badge {
@@ -528,14 +547,16 @@
             display: inline-flex;
         }
         .leave-link {
-            background: rgba(15, 23, 42, 0.92);
             color: #e2e8f0;
-            border: 1px solid rgba(148, 163, 184, 0.18);
         }
         .end-btn {
-            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            background: rgba(185, 28, 28, 0.92);
+            border-color: rgba(248, 113, 113, 0.34);
             color: #fff;
-            box-shadow: 0 14px 28px rgba(185, 28, 28, 0.28);
+        }
+        .end-btn:hover {
+            background: rgba(220, 38, 38, 0.96);
+            border-color: rgba(252, 165, 165, 0.46);
         }
         .side-panel {
             display: flex;
@@ -759,8 +780,6 @@
                 <i class="fas fa-user-clock"></i>
                 <span id="peerPresenceText">{{ $peerName ?? 'Peer' }} not connected yet</span>
             </div>
-            <div class="meta-pill"><i class="fas fa-hashtag"></i> {{ $consultation->code }}</div>
-            <div class="meta-pill"><i class="fas fa-clock"></i> {{ $consultation->duration_minutes }} min</div>
             <div class="meta-pill"><i class="fas fa-calendar"></i> {{ $scheduledAt->format('M d, Y g:i A') }}</div>
         </div>
     </div>
@@ -858,54 +877,25 @@
 
         <aside class="side-panel">
             <div class="panel-section">
-                <div class="eyebrow">Connection</div>
-                <div class="panel-title">Built for direct consultation calls</div>
-                <div class="panel-copy">
-                    This session now runs through WebRTC with your own application signaling. No external Jitsi room is used here.
-                </div>
-
+                <div class="eyebrow">Call Details</div>
+                <div class="panel-title">{{ $peerName ?? 'Consultation partner' }}</div>
                 <div class="panel-grid">
                     <div class="info-card">
-                        <div class="info-label">Participant</div>
-                        <div class="info-value">{{ $displayName }}</div>
-                    </div>
-                    <div class="info-card">
-                        <div class="info-label">Other Participant</div>
+                        <div class="info-label">Calling</div>
                         <div class="info-value">{{ $peerName ?? 'Not available' }}</div>
                     </div>
                     <div class="info-card">
-                        <div class="info-label">Consultation Type</div>
-                        <div class="info-value">{{ ucfirst($consultation->type) }} consultation</div>
+                        <div class="info-label">Date & Time</div>
+                        <div class="info-value">{{ $scheduledAt->format('M d, Y g:i A') }}</div>
                     </div>
                 </div>
             </div>
 
-            <div class="panel-section">
-                <div class="signal-box">
-                    <div class="signal-title">Session Status</div>
-                    <div class="signal-body" id="sessionSignalText">
-                        Waiting for media permissions and consultation presence channel.
-                    </div>
+            @if(Auth::user()->role !== 'lawyer')
+                <div class="signal-box hidden" id="balanceSignalBox" style="display:none;">
+                    <div class="signal-body" id="balanceSignalText"></div>
                 </div>
-
-                @if(Auth::user()->role !== 'lawyer')
-                    <div class="signal-box hidden" id="balanceSignalBox" style="margin-top:12px;background:rgba(22, 163, 74, 0.12);border-color:rgba(74, 222, 128, 0.18);">
-                        <div class="signal-title" style="color:#86efac;">Balance Payment</div>
-                        <div class="signal-body" id="balanceSignalText">
-                            The lawyer has ended the consultation. Redirecting to your remaining balance payment.
-                        </div>
-                    </div>
-                @endif
-            </div>
-
-            <div class="panel-section">
-                <div class="eyebrow">Checklist</div>
-                <ul class="checklist">
-                    <li><i class="fas fa-check-circle"></i><span>Allow camera and microphone access when the browser asks.</span></li>
-                    <li><i class="fas fa-check-circle"></i><span>Stay on this page while the session is active so the consultation status stays in sync.</span></li>
-                    <li><i class="fas fa-check-circle"></i><span>If the other participant reconnects, the call will renegotiate automatically.</span></li>
-                </ul>
-            </div>
+            @endif
         </aside>
     </div>
 </div>
@@ -1010,6 +1000,7 @@
     let iceWatchdogTimer = null;
     let heartbeatTimer = null;
     let signalPollTimer = null;
+    let sessionEndStatusTimer = null;
     let isMakingOffer = false;
     let pendingControlMessages = [];
     let lastRemoteMuteSignalAt = 0;
@@ -1021,7 +1012,9 @@
     function setCallState(title, copy) {
         callStateTitle.textContent = title;
         callStateCopy.textContent = copy;
-        sessionSignalText.textContent = copy;
+        if (sessionSignalText) {
+            sessionSignalText.textContent = copy;
+        }
     }
 
     function updatePeerPresence(online) {
@@ -2052,6 +2045,11 @@
                 return;
             }
 
+            if (payload.type === 'consultation-ended') {
+                handleConsultationEnded(payload);
+                return;
+            }
+
             if (payload.type === 'screen-share-start') {
                 remoteVideo.classList.add('screen-share-video');
                 setCallState(
@@ -2254,6 +2252,13 @@
         }
         if (!signalPollTimer) {
             signalPollTimer = setInterval(pollSignals, fastSignalIntervalMs);
+        }
+    }
+
+    function stopSessionEndWatcher() {
+        if (sessionEndStatusTimer) {
+            clearInterval(sessionEndStatusTimer);
+            sessionEndStatusTimer = null;
         }
     }
 
@@ -2583,8 +2588,8 @@
             startAutoReconnect();
 
             if (isClient) {
-                setInterval(checkSessionStatus, 5000);
-                setTimeout(checkSessionStatus, 1200);
+                setInterval(checkSessionStatus, 1000);
+                setTimeout(checkSessionStatus, 500);
             }
         } catch (error) {
             console.error('Failed to start call page:', error);
@@ -2637,6 +2642,7 @@
         stopIceWatchdog();
         stopAutoReconnect();
         stopFallbackSignaling();
+        stopSessionEndWatcher();
 
         if (screenStream) {
             screenStream.getTracks().forEach(function(track) {
@@ -2653,6 +2659,48 @@
             localStream = null;
             cameraVideoTrack = null;
             microphoneAudioTrack = null;
+        }
+    }
+
+    function redirectToBalanceCheckout(url) {
+        if (balanceRedirecting) {
+            return;
+        }
+
+        balanceRedirecting = true;
+        stopSessionEndWatcher();
+
+        if (balanceSignalBox) {
+            balanceSignalBox.classList.remove('hidden');
+        }
+        if (balanceSignalText) {
+            balanceSignalText.textContent = 'The lawyer ended the consultation. Redirecting to the remaining balance checkout now.';
+        }
+
+        cleanupBeforeExit();
+        setTimeout(function() {
+            window.location.href = url;
+        }, 250);
+    }
+
+    function handleConsultationEnded(payload) {
+        if (!isClient) {
+            return;
+        }
+
+        setCallState(
+            'Consultation ended',
+            'The lawyer ended this consultation. Preparing the remaining balance payment.'
+        );
+
+        if (payload.balance_checkout_url) {
+            redirectToBalanceCheckout(payload.balance_checkout_url);
+            return;
+        }
+
+        checkSessionStatus();
+        if (!sessionEndStatusTimer) {
+            sessionEndStatusTimer = setInterval(checkSessionStatus, 700);
         }
     }
 
@@ -2675,17 +2723,16 @@
                 return response.json();
             })
             .then(function(data) {
-                if (data.status === 'completed' && data.balance_checkout_url) {
+                if (data.status === 'completed') {
+                    if (data.balance_checkout_url) {
+                        redirectToBalanceCheckout(data.balance_checkout_url);
+                        return;
+                    }
+
                     balanceRedirecting = true;
-                    if (balanceSignalBox) {
-                        balanceSignalBox.classList.remove('hidden');
-                    }
-                    if (balanceSignalText) {
-                        balanceSignalText.textContent = 'The lawyer ended the consultation. Redirecting to the remaining balance checkout now.';
-                    }
-                    setTimeout(function() {
-                        window.location.href = data.balance_checkout_url;
-                    }, 900);
+                    stopSessionEndWatcher();
+                    cleanupBeforeExit();
+                    window.location.href = returnUrl;
                 }
             })
             .catch(function() {
@@ -2821,12 +2868,43 @@
                 event.preventDefault();
                 return;
             }
+            event.preventDefault();
+
             var endButton = document.getElementById('endSessionBtn');
             if (endButton) {
                 endButton.disabled = true;
                 endButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ending';
             }
+
+            const endingSignal = makeSignalPayload({ type: 'consultation-ended' });
+            if (presenceChannel) {
+                presenceChannel.whisper('signal', endingSignal);
+            }
+            postSignal(endingSignal);
             cleanupBeforeExit();
+
+            fetch(endSessionForm.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'same-origin',
+            })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Could not end consultation.');
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    window.location.href = data.redirect_url || returnUrl;
+                })
+                .catch(function(error) {
+                    console.error('End session failed:', error);
+                    endSessionForm.submit();
+                });
         });
     }
 
