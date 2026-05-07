@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Lawyer;
 
+use App\Events\ConsultationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Consultation;
 use App\Models\Payment;
@@ -41,7 +42,7 @@ class ConsultationController extends Controller
             'notes'            => $c->notes,
             'case_document'     => $c->case_document,
             'case_document_url' => $c->case_document_url,
-            'can_join_video'    => $c->canJoinVideoCall(),
+            'can_join_video'    => $this->lawyerCanJoinVideo($c),
             'video_room_name'   => $c->type === 'video' ? $c->videoRoomName() : null,
             'video_join_url'    => $c->type === 'video' ? $c->videoJoinUrl() : null,
             'video_signaling_channel' => $c->type === 'video' ? $c->videoPresenceSignalingChannel() : null,
@@ -83,6 +84,8 @@ class ConsultationController extends Controller
             );
         }
 
+        broadcast(new ConsultationUpdated($consultation->fresh(['client', 'lawyer.lawyerProfile', 'balancePayment']), ['status', 'balance_payment']));
+
         return response()->json(['message' => 'Consultation marked as completed. The client can now pay the remaining balance.']);
     }
 
@@ -99,7 +102,7 @@ class ConsultationController extends Controller
             'room_name' => $consultation->videoRoomName(),
             'join_url' => $consultation->videoJoinUrl(),
             'display_name' => $request->user()->name,
-            'can_join' => $consultation->canJoinVideoCall(),
+            'can_join' => $this->lawyerCanJoinVideo($consultation),
             'join_opens_at' => $consultation->videoJoinOpensAt(),
             'signaling_channel' => $consultation->videoEchoSignalingChannel(),
             'echo_signaling_channel' => $consultation->videoEchoSignalingChannel(),
@@ -123,5 +126,10 @@ class ConsultationController extends Controller
             'balance_status' => $balance?->status,
             'balance_checkout_url' => null,
         ]);
+    }
+
+    private function lawyerCanJoinVideo(Consultation $consultation): bool
+    {
+        return $consultation->type === 'video' && $consultation->status === 'upcoming';
     }
 }

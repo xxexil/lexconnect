@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Lawyer;
 
 use App\Http\Controllers\Controller;
 use App\Events\ConsultationStatusChanged;
+use App\Events\ConsultationUpdated;
 use App\Models\Consultation;
 use App\Models\Payment;
 use App\Services\ConsultationPaymentService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class LawyerConsultationController extends Controller
@@ -67,7 +69,7 @@ class LawyerConsultationController extends Controller
         return back()->with('success', 'Consultation declined.');
     }
 
-    public function complete($id, ConsultationPaymentService $paymentService)
+    public function complete(Request $request, $id, ConsultationPaymentService $paymentService)
     {
         $c = Consultation::where('lawyer_id', Auth::id())->where('status', 'upcoming')->findOrFail($id);
         $c->update(['status' => 'completed']);
@@ -82,6 +84,15 @@ class LawyerConsultationController extends Controller
                 $balance->loadMissing(['consultation', 'client', 'lawyer']),
                 forceRefresh: true
             );
+        }
+
+        broadcast(new ConsultationUpdated($c->fresh(['client', 'lawyer.lawyerProfile', 'balancePayment']), ['status', 'balance_payment']));
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Consultation marked as completed. The client can now pay the remaining balance.',
+                'redirect_url' => route('lawyer.consultations'),
+            ]);
         }
 
         return back()->with('success', 'Consultation marked as completed. The client can now pay the remaining balance.');

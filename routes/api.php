@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\LawFirm\EarningsController as LawFirmEarningsContro
 use App\Http\Controllers\Api\LawFirm\MessageController as LawFirmMessageController;
 use App\Http\Controllers\Api\LawFirm\ProfileController as LawFirmProfileController;
 use App\Http\Controllers\SensitiveDocumentController;
+use App\Http\Controllers\VideoCallController;
 
 // PayMongo webhook – public, no auth (signature is verified inside the controller)
 Route::post('/webhooks/paymongo', [\App\Http\Controllers\PaymentWebhookController::class, 'handle']);
@@ -59,6 +60,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/consultations/{id}/cancel', [ClientConsultationController::class, 'cancel']);
         Route::get('/consultations/{id}/video', [ClientConsultationController::class, 'video']);
         Route::get('/consultations/{id}/status', [ClientConsultationController::class, 'status']);
+        Route::post('/consultations/{consultation}/video/heartbeat', [VideoCallController::class, 'heartbeat']);
+        Route::post('/consultations/{consultation}/video/signal', [VideoCallController::class, 'signal']);
+        Route::get('/consultations/{consultation}/video/signals', [VideoCallController::class, 'signals']);
         Route::get('/payments', [ClientPaymentController::class, 'index']);
         Route::post('/payments/{id}/resume', [ClientPaymentController::class, 'resume']);
         Route::get('/payments/{id}/status', [ClientPaymentController::class, 'status']);
@@ -83,6 +87,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/consultations/{id}/complete', [LawyerConsultationController::class, 'complete']);
         Route::get('/consultations/{id}/video', [LawyerConsultationController::class, 'video']);
         Route::get('/consultations/{id}/status', [LawyerConsultationController::class, 'status']);
+        Route::post('/consultations/{consultation}/video/heartbeat', [VideoCallController::class, 'heartbeat']);
+        Route::post('/consultations/{consultation}/video/signal', [VideoCallController::class, 'signal']);
+        Route::get('/consultations/{consultation}/video/signals', [VideoCallController::class, 'signals']);
         Route::get('/messages', [LawyerMessageController::class, 'index']);
         Route::get('/messages/{conversationId}', [LawyerMessageController::class, 'show']);
         Route::post('/messages/send', [LawyerMessageController::class, 'send']);

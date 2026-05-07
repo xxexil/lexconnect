@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Services\ConsultationPaymentService;
 use App\Services\WebRtcConfigService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -43,7 +44,7 @@ class ConsultationController extends Controller
             'notes'            => $c->notes,
             'case_document'     => $c->case_document,
             'case_document_url' => $c->case_document_url,
-            'can_join_video'    => $c->canJoinVideoCall(),
+            'can_join_video'    => $this->clientCanJoinVideo($c),
             'video_room_name'   => $c->type === 'video' ? $c->videoRoomName() : null,
             'video_join_url'    => $c->type === 'video' ? $c->videoJoinUrl() : null,
             'video_signaling_channel' => $c->type === 'video' ? $c->videoPresenceSignalingChannel() : null,
@@ -59,7 +60,7 @@ class ConsultationController extends Controller
     {
         $request->validate([
             'lawyer_id'        => 'required|exists:users,id',
-            'scheduled_at'     => 'required|date',
+            'scheduled_at'     => 'required|date|after:now',
             'duration_minutes' => 'required|integer|in:30,60,90,120',
             'type'             => 'required|in:video,phone,in-person',
             'notes'            => 'nullable|string|max:1000',
@@ -177,7 +178,7 @@ class ConsultationController extends Controller
             'room_name' => $consultation->videoRoomName(),
             'join_url' => $consultation->videoJoinUrl(),
             'display_name' => $request->user()->name,
-            'can_join' => $consultation->canJoinVideoCall(),
+            'can_join' => $this->clientCanJoinVideo($consultation),
             'join_opens_at' => $consultation->videoJoinOpensAt(),
             'signaling_channel' => $consultation->videoEchoSignalingChannel(),
             'echo_signaling_channel' => $consultation->videoEchoSignalingChannel(),
@@ -205,6 +206,22 @@ class ConsultationController extends Controller
             'balance_payment_id' => $balance?->id,
             'balance_status' => $balance?->status,
             'balance_checkout_url' => $balanceUrl,
+            'lawyer_in_video_call' => Cache::has($this->presenceKey($consultation, (int) $consultation->lawyer_id)),
         ]);
+    }
+
+    private function clientCanJoinVideo(Consultation $consultation): bool
+    {
+        return $consultation->canJoinVideoCall()
+            || (
+                $consultation->type === 'video'
+                && $consultation->status === 'upcoming'
+                && Cache::has($this->presenceKey($consultation, (int) $consultation->lawyer_id))
+            );
+    }
+
+    private function presenceKey(Consultation $consultation, int $userId): string
+    {
+        return "video-call:{$consultation->id}:presence:{$userId}";
     }
 }

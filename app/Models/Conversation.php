@@ -10,7 +10,7 @@ class Conversation extends Model
 
     public function callRoomName(): string
     {
-        return config('services.jitsi.room_prefix', 'lexconnect') . '-conversation-' . $this->id;
+        return 'lexconnect-conversation-' . $this->id;
     }
 
     public function directCallInvitePayload(string $fromName, string $title = 'Video Call'): string

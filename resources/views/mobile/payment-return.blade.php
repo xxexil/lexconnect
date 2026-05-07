@@ -80,7 +80,7 @@
                 ? 'We are sending you back to the LexConnect app now.'
                 : 'We are sending you back to the LexConnect app now so you can continue there.' }}
         </p>
-        <a href="{{ $targetUrl }}" class="mpr-btn" id="openAppBtn">Open LexConnect</a>
+        <a href="{{ $targetUrl }}" class="mpr-btn" id="openAppBtn" rel="noopener">Open LexConnect</a>
         <div class="mpr-note">If the app does not open automatically, tap the button above.</div>
     </div>
 
@@ -89,10 +89,10 @@
             var targetUrl = @json($targetUrl);
             var opened = false;
 
-            function openApp() {
-                if (opened) return;
+            function openApp(force) {
+                if (opened && !force) return;
                 opened = true;
-                window.location.href = targetUrl;
+                window.location.assign(targetUrl);
                 setTimeout(function () {
                     opened = false;
                 }, 1200);
@@ -102,8 +102,9 @@
                 setTimeout(openApp, 150);
             });
 
-            document.getElementById('openAppBtn').addEventListener('click', function () {
-                openApp();
+            document.getElementById('openAppBtn').addEventListener('click', function (event) {
+                event.preventDefault();
+                openApp(true);
             });
         })();
     </script>

@@ -8,6 +8,14 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
+Broadcast::channel('user.{id}.consultations', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});
+
+Broadcast::channel('user.{id}.payments', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});
+
 // Only conversation participants may subscribe
 Broadcast::channel('conversation.{conversationId}', function ($user, $conversationId) {
     $conversation = Conversation::find($conversationId);

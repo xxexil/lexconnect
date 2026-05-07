@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ConsultationUpdated;
 use App\Models\Consultation;
+use App\Services\ConsultationPaymentService;
 use App\Services\WebRtcConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class VideoCallController extends Controller
 {
@@ -26,7 +29,7 @@ class VideoCallController extends Controller
             return redirect()->back()->with('error', 'The video call is only available for confirmed upcoming consultations.');
         }
 
-        if (! $consultation->canJoinVideoCall()) {
+        if (! $this->canUserJoinVideoCall($consultation, $user)) {
             return redirect()->back()->with('error', 'The video call will be available at ' . $consultation->videoJoinOpensAt()->format('M d, g:i A') . ', 5 minutes before the scheduled time.');
         }
 
@@ -50,7 +53,7 @@ class VideoCallController extends Controller
         ]);
     }
 
-    public function end(Consultation $consultation)
+    public function end(Consultation $consultation, ConsultationPaymentService $paymentService)
     {
         $user = Auth::user();
 
@@ -63,9 +66,19 @@ class VideoCallController extends Controller
         }
 
         $balance = $consultation->balancePayment()->first();
+        if ($balance && $balance->status === 'pending') {
+            $balance = $paymentService->createBalanceCheckout(
+                $balance->loadMissing(['consultation', 'client', 'lawyer']),
+                forceRefresh: true,
+                context: 'mobile'
+            );
+        }
+
         $balanceUrl = $balance && $balance->status === 'pending'
             ? route('payment.balance.start', $balance)
             : null;
+
+        broadcast(new ConsultationUpdated($consultation->fresh(['client', 'lawyer.lawyerProfile', 'balancePayment']), ['status', 'balance_payment']));
 
         $this->queueSignalForUser($consultation, (int) $consultation->client_id, [
             'type' => 'consultation-ended',
@@ -169,6 +182,14 @@ class VideoCallController extends Controller
 
         Cache::put($key, $signals, now()->addMinutes(10));
 
+        Log::info('Video call signal queued', [
+            'consultation_id' => $consultation->id,
+            'type' => $payload['type'],
+            'from_user_id' => $payload['fromUserId'],
+            'target_user_id' => $payload['targetUserId'],
+            'queued_count' => count($signals),
+        ]);
+
         return response()->json(['queued' => true]);
     }
 
@@ -182,14 +203,39 @@ class VideoCallController extends Controller
 
         $key = $this->signalKey($consultation, (int) $user->id);
 
+        $signals = Cache::pull($key, []);
+
+        if (! empty($signals)) {
+            Log::info('Video call signals pulled', [
+                'consultation_id' => $consultation->id,
+                'user_id' => $user->id,
+                'types' => collect($signals)->pluck('type')->values()->all(),
+                'count' => count($signals),
+            ]);
+        }
+
         return response()->json([
-            'signals' => Cache::pull($key, []),
+            'signals' => $signals,
         ]);
     }
 
     private function presenceKey(Consultation $consultation, int $userId): string
     {
         return "video-call:{$consultation->id}:presence:{$userId}";
+    }
+
+    private function canUserJoinVideoCall(Consultation $consultation, $user): bool
+    {
+        if ($consultation->type !== 'video' || $consultation->status !== 'upcoming') {
+            return false;
+        }
+
+        if ((int) $consultation->lawyer_id === (int) $user->id) {
+            return true;
+        }
+
+        return $consultation->canJoinVideoCall()
+            || Cache::has($this->presenceKey($consultation, (int) $consultation->lawyer_id));
     }
 
     private function signalKey(Consultation $consultation, int $userId): string

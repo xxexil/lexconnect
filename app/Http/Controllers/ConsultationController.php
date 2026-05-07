@@ -218,7 +218,7 @@ class ConsultationController extends Controller
     public function book(Request $request, PayMongoService $paymongo, FraudDetectionService $fraudDetection) {
         $request->validate([
             'lawyer_id'     => 'required|exists:users,id',
-            'scheduled_at'  => 'required|date',
+            'scheduled_at'  => 'required|date|after:now',
             'duration'      => 'required|integer|min:15',
             'type'          => 'required|in:video,phone,in-person',
             'case_document' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10240',
